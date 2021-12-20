@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSimple_PutThenGet(t *testing.T) {
+func TestStatusAPIClient_XXX(t *testing.T) {
 	require := require.New(t)
 
 	c := cluster.NewCluster()

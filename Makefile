@@ -21,6 +21,10 @@ env: image
 image:
 	docker build . -t gorqlite
 
+.PHONY: generate
+generate:
+	go generate ./...
+
 .PHONY: fmt
 fmt:
 	go fmt ./...

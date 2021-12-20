@@ -1,6 +1,9 @@
 # gorqlite
 A client library for [rqlite](https://github.com/rqlite/rqlite) based on [rqlite-js](https://github.com/rqlite/rqlite-js).
 
+## TODO
+- [ ] Run go.dev/doc/diagnostic
+
 ## Testing
 Tests are split into unit tests and system tests.
 
