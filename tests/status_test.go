@@ -3,30 +3,45 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/dunstall/gorqlite"
 	"github.com/dunstall/gorqlite/tests/cluster"
 	"github.com/stretchr/testify/require"
 )
 
-func TestStatusAPIClient_XXX(t *testing.T) {
+func TestStatusAPIClient_PeerStatus(t *testing.T) {
 	require := require.New(t)
 
-	c := cluster.NewCluster()
-	defer c.Close()
+	cluster, err := cluster.OpenCluster(3)
+	require.Nil(err)
+	defer cluster.Close()
 
-	numNodes := uint32(3)
-	nodeAddresses := []string{}
-	for id := uint32(1); id <= numNodes; id += 1 {
-		node, err := cluster.NewRqliteNode(id)
-		require.Nil(err, "failed to start node")
-		c.AddNode(id, node)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
 
-		addr := fmt.Sprintf("http://localhost:%d", node.ProxyHTTPPort)
-		nodeAddresses = append(nodeAddresses, addr)
+	require.True(cluster.WaitForHealthy(ctx))
+
+	expectedLeader := gorqlite.Leader{
+		Addr:   "0.0.0.0:7001",
+		NodeID: "1",
+	}
+	expectedNodes := []gorqlite.Node{
+		gorqlite.Node{Addr: "0.0.0.0:7001", ID: "1", Suffrage: "Voter"},
+		gorqlite.Node{Addr: "0.0.0.0:7002", ID: "2", Suffrage: "Voter"},
+		gorqlite.Node{Addr: "0.0.0.0:7003", ID: "3", Suffrage: "Voter"},
 	}
 
-	// TODO(AD)
-	fmt.Println(nodeAddresses)
+	for id, addr := range cluster.NodeAddrs() {
+		statusClient := gorqlite.NewStatusAPIClient(addr)
+		status, err := statusClient.Status()
+		require.Nil(err)
+
+		require.Equal(fmt.Sprintf("%d", id), status.Store.NodeID)
+		require.Equal(expectedLeader, status.Store.Leader)
+		require.Equal(expectedNodes, status.Store.Nodes)
+	}
 }

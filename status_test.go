@@ -70,14 +70,24 @@ const (
         "fsm_index": 0,
         "heartbeat_timeout": "1s",
         "leader": {
-            "addr": "",
-            "node_id": ""
+          "addr": "0.0.0.0:7002",
+            "node_id": "2"
         },
         "node_id": "1",
         "nodes": [
             {
                 "addr": "0.0.0.0:7001",
                 "id": "1",
+                "suffrage": "Voter"
+            },
+            {
+                "addr": "0.0.0.0:7002",
+                "id": "2",
+                "suffrage": "Voter"
+            },
+            {
+                "addr": "0.0.0.0:7003",
+                "id": "3",
                 "suffrage": "Voter"
             }
         ],
@@ -215,6 +225,61 @@ func TestStatusAPIClient_v6_7_0(t *testing.T) {
 			Addr:    "0.0.0.0:7001",
 			APIAddr: "0.0.0.0:6001",
 			HTTPS:   "false",
+		},
+		HTTP: HTTPStatus{
+			Auth:     "disabled",
+			BindAddr: "[::]:4001",
+		},
+		Node: NodeStatus{
+			StartTime: "2021-12-20T21:05:05.943343316Z",
+			Uptime:    "15.696393ms",
+		},
+		OS: OSStatus{
+			Executable: "/usr/local/bin/rqlited",
+			Hostname:   "12bcec7079d5",
+			PageSize:   4096,
+			Pid:        4541,
+			Ppid:       4523,
+		},
+		Runtime: RuntimeStatus{
+			GoArch:       "amd64",
+			GoMaxProcs:   8,
+			GoOS:         "linux",
+			NumCPU:       8,
+			NumGoroutine: 12,
+			Version:      "go1.16",
+		},
+		Store: StoreStatus{
+			Addr:             "0.0.0.0:7001",
+			ApplyTimeout:     "10s",
+			DBAppliedIndex:   0,
+			Dir:              "/tmp/node-13591731195",
+			DirSize:          32768,
+			ElectionTimeout:  "1s",
+			FSMIndex:         0,
+			HeartbeatTimeout: "1s",
+			Leader: Leader{
+				Addr:   "0.0.0.0:7002",
+				NodeID: "2",
+			},
+			NodeID: "1",
+			Nodes: []Node{
+				Node{
+					Addr:     "0.0.0.0:7001",
+					ID:       "1",
+					Suffrage: "Voter",
+				},
+				Node{
+					Addr:     "0.0.0.0:7002",
+					ID:       "2",
+					Suffrage: "Voter",
+				},
+				Node{
+					Addr:     "0.0.0.0:7003",
+					ID:       "3",
+					Suffrage: "Voter",
+				},
+			},
 		},
 	}
 
