@@ -25,7 +25,7 @@ func OpenCluster(numNodes uint32) (*Cluster, error) {
 	cluster := NewCluster()
 
 	var leaderPort uint16
-	for id := uint32(1); id <= numNodes; id += 1 {
+	for id := uint32(1); id <= numNodes; id++ {
 		if leaderPort == 0 {
 			node, err := NewRqliteNode(id)
 			if err != nil {

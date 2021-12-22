@@ -3,6 +3,8 @@ package cluster
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/dunstall/gorqlite"
 )
 
 const (
@@ -15,15 +17,14 @@ type logger struct {
 }
 
 func newLogger(file string) (*logger, error) {
-	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
-		return nil, err
-	}
-
 	path := filepath.Join(logDir, file)
+	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
+		return nil, gorqlite.WrapError(err, "failed to open logger: %s", file)
+	}
 
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
 	if err != nil {
-		return nil, err
+		return nil, gorqlite.WrapError(err, "failed to open logger: %s", path)
 	}
 	return &logger{
 		Path: path,
@@ -32,5 +33,9 @@ func newLogger(file string) (*logger, error) {
 }
 
 func (l *logger) Write(b []byte) (int, error) {
-	return l.f.Write(b)
+	n, err := l.f.Write(b)
+	if err != nil {
+		return n, gorqlite.WrapError(err, "failed to write to logger: %s", l.Path)
+	}
+	return n, nil
 }

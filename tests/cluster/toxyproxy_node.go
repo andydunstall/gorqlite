@@ -5,11 +5,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/dunstall/gorqlite"
 	log "github.com/sirupsen/logrus"
 )
-
-// TODO(AD) Replace with a custom system all in the same process (rather than
-// having to start `tokiproxy-server`.
 
 type ToxiproxyNode struct {
 	id string
@@ -18,7 +16,7 @@ type ToxiproxyNode struct {
 func NewToxiproxyNode(id string, targetPort uint16, proxyPort uint16) (ToxiproxyNode, error) {
 	lg, err := newLogger(fmt.Sprintf("toxiproxy-create-%s", id))
 	if err != nil {
-		return ToxiproxyNode{}, fmt.Errorf("failed to open log file: %s", err)
+		return ToxiproxyNode{}, gorqlite.WrapError(err, "failed to create toxiproxy node")
 	}
 
 	cmd := exec.Command(
@@ -34,7 +32,7 @@ func NewToxiproxyNode(id string, targetPort uint16, proxyPort uint16) (Toxiproxy
 	cmd.Stdout = lg
 	cmd.Stderr = lg
 	if err := cmd.Run(); err != nil {
-		return ToxiproxyNode{}, err
+		return ToxiproxyNode{}, gorqlite.WrapError(err, "failed to create toxiproxy node")
 	}
 
 	log.WithFields(log.Fields{
@@ -52,7 +50,7 @@ func NewToxiproxyNode(id string, targetPort uint16, proxyPort uint16) (Toxiproxy
 func (n *ToxiproxyNode) Close() error {
 	lg, err := newLogger(fmt.Sprintf("toxiproxy-delete-%s", n.id))
 	if err != nil {
-		return fmt.Errorf("failed to open log file: %s", err)
+		return gorqlite.WrapError(err, "failed to close toxiproxy node")
 	}
 
 	cmd := exec.Command("toxiproxy-cli", "delete", n.id)
@@ -62,7 +60,7 @@ func (n *ToxiproxyNode) Close() error {
 	cmd.Stdout = lg
 	cmd.Stderr = lg
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to stop proxy: %s", err)
+		return gorqlite.WrapError(err, "failed to close toxiproxy node")
 	}
 
 	log.WithFields(log.Fields{

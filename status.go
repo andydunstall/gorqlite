@@ -2,7 +2,6 @@ package gorqlite
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type BuildStatus struct {
@@ -71,7 +70,6 @@ type StoreStatus struct {
 	Nodes            []Node `json:"nodes,omitempty"`
 }
 
-// TODO(AD) Missing fields.
 type Status struct {
 	Build   BuildStatus   `json:"build,omitempty"`
 	Cluster ClusterStatus `json:"cluster,omitempty"`
@@ -101,17 +99,17 @@ func NewStatusAPIClientWithClient(client APIClient) *StatusAPIClient {
 func (api *StatusAPIClient) Status() (Status, error) {
 	resp, err := api.client.Get("/status")
 	if err != nil {
-		return Status{}, fmt.Errorf("failed to fetch status: %s", err)
+		return Status{}, WrapError(err, "failed to fetch status")
 	}
 	defer resp.Body.Close()
 
 	if !IsStatusOK(resp.StatusCode) {
-		return Status{}, fmt.Errorf("failed to fetch status: invalid status code: %d", resp.StatusCode)
+		return Status{}, NewError("failed to fetch status: invalid status code: %d", resp.StatusCode)
 	}
 
 	var status Status
 	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		return Status{}, fmt.Errorf("failed to fetch status: invalid response: %s", err)
+		return Status{}, WrapError(err, "failed to fetch status: invalid response")
 	}
 	return status, nil
 }

@@ -1,6 +1,7 @@
 package gorqlite
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -15,6 +16,9 @@ func NewHTTPAPIClient(addr string) *HTTPAPIClient {
 }
 
 func (api *HTTPAPIClient) Get(path string) (*http.Response, error) {
-	// TODO(AD) Check if path ends in '/'.
-	return http.Get(api.addr + path)
+	resp, err := http.Get(api.addr + path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource: %s", err)
+	}
+	return resp, nil
 }
