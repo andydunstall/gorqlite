@@ -64,7 +64,7 @@ func (c *Cluster) WaitForHealthy(ctx context.Context) bool {
 func (c *Cluster) NodeAddrs() map[uint32]string {
 	nodeAddresses := make(map[uint32]string)
 	for id, node := range c.nodes {
-		addr := fmt.Sprintf("http://localhost:%d", node.ProxyHTTPPort)
+		addr := fmt.Sprintf("localhost:%d", node.ProxyHTTPPort)
 		nodeAddresses[id] = addr
 	}
 	return nodeAddresses
