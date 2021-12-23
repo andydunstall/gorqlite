@@ -1,8 +1,10 @@
 package gorqlite
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/dunstall/gorqlite/mocks"
@@ -21,13 +23,17 @@ func TestHTTPAPIClient_DefaultGet(t *testing.T) {
 			Host:   "rqlite",
 			Path:   "/status",
 		},
-		Header: make(http.Header),
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite",
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(expectedReq).Return(expectedResp, nil)
+	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
 	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
 	resp, err := api.Get("/status")
@@ -46,13 +52,17 @@ func TestHTTPAPIClient_DefaultPost(t *testing.T) {
 			Host:   "rqlite",
 			Path:   "/status",
 		},
-		Header: make(http.Header),
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite",
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(expectedReq).Return(expectedResp, nil)
+	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
 	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
 	resp, err := api.Post("/status")
@@ -74,13 +84,17 @@ func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
 			Host:   "rqlite",
 			Path:   "/status",
 		},
-		Header: headers,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     headers,
+		Host:       "rqlite",
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(expectedReq).Return(expectedResp, nil)
+	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
 	api := NewHTTPAPIClientWithClient(
 		"rqlite",
@@ -90,4 +104,48 @@ func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
 	require.Equal(t, expectedResp, resp)
+}
+
+type httpReqEqMatcher struct {
+	x interface{}
+}
+
+func newHTTPReqEqMatcher(r *http.Request) gomock.Matcher {
+	return &httpReqEqMatcher{
+		x: r,
+	}
+}
+
+func (e httpReqEqMatcher) Matches(x interface{}) bool {
+	lhs, ok := e.x.(*http.Request)
+	if !ok {
+		return false
+	}
+	rhs, ok := x.(*http.Request)
+	if !ok {
+		return false
+	}
+
+	// Removes unexported fields to compare.
+	strippedLHS := &http.Request{
+		Method: lhs.Method,
+		URL:    lhs.URL,
+		Proto:  lhs.Proto,
+		Header: lhs.Header,
+		Host:   lhs.Host,
+		Body:   lhs.Body,
+	}
+	strippedRHS := &http.Request{
+		Method: rhs.Method,
+		URL:    rhs.URL,
+		Proto:  rhs.Proto,
+		Header: rhs.Header,
+		Host:   rhs.Host,
+		Body:   rhs.Body,
+	}
+	return reflect.DeepEqual(strippedLHS, strippedRHS)
+}
+
+func (e httpReqEqMatcher) String() string {
+	return fmt.Sprintf("is equal to %v", e.x)
 }

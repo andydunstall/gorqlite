@@ -3,6 +3,7 @@
 package gorqlite
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 )
@@ -61,24 +62,35 @@ func NewHTTPAPIClientWithClient(addr string, client httpClient, opts ...HTTPOpti
 }
 
 func (api *HTTPAPIClient) Get(path string) (*http.Response, error) {
-	return api.fetch(http.MethodGet, path)
+	return api.fetch(context.Background(), http.MethodGet, path)
+}
+
+func (api *HTTPAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodGet, path)
 }
 
 func (api *HTTPAPIClient) Post(path string) (*http.Response, error) {
-	return api.fetch(http.MethodPost, path)
+	return api.fetch(context.Background(), http.MethodPost, path)
 }
 
-func (api *HTTPAPIClient) fetch(method, path string) (*http.Response, error) {
+func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodPost, path)
+}
+
+func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string) (*http.Response, error) {
 	url := &url.URL{
 		Scheme: "http",
 		Host:   api.addr,
 		Path:   path,
 	}
-	req := &http.Request{
-		Method: method,
-		URL:    url,
-		Header: api.conf.HTTPHeaders,
+	req, err := http.NewRequestWithContext(ctx, method, url.String(), nil)
+	if err != nil {
+		return nil, WrapError(err, "failed to fetch: invalid request")
 	}
+	if api.conf.HTTPHeaders != nil {
+		req.Header = api.conf.HTTPHeaders
+	}
+
 	resp, err := api.client.Do(req)
 	if err != nil {
 		return nil, WrapError(err, "failed to fetch")
