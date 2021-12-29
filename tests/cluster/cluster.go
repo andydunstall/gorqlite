@@ -77,7 +77,7 @@ func (c *Cluster) RandomNodeAddr() string {
 		return ""
 	}
 
-	ids := make([]uint32, len(nodes))
+	ids := []uint32{}
 	for id := range nodes {
 		ids = append(ids, id)
 	}
