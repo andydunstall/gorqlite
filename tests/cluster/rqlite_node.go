@@ -9,10 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Shopify/toxiproxy/v2"
 	"github.com/dunstall/gorqlite"
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
+
+type Proxy interface {
+	Stop()
+}
 
 type RqliteNode struct {
 	ID            uint32
@@ -22,7 +26,8 @@ type RqliteNode struct {
 	ProxyRaftPort uint16
 	Dir           string
 
-	nodes []io.Closer
+	proxies []Proxy
+	proc    io.Closer
 }
 
 func NewRqliteNode(id uint32) (*RqliteNode, error) {
@@ -39,25 +44,24 @@ func NewRqliteNode(id uint32) (*RqliteNode, error) {
 	proxyHTTPPort := uint16(6000 + id)
 	proxyRaftPort := uint16(7000 + id)
 
-	nodes := []io.Closer{}
-
-	httpProxy, err := NewToxiproxyNode(uuid.New().String(), httpPort, proxyHTTPPort)
-	if err != nil {
+	httpProxy := toxiproxy.NewProxy()
+	httpProxy.Listen = fmt.Sprintf("0.0.0.0:%d", proxyHTTPPort)
+	httpProxy.Upstream = fmt.Sprintf("localhost:%d", httpPort)
+	if err = httpProxy.Start(); err != nil {
 		return &RqliteNode{}, wrapper.Error(err)
 	}
-	nodes = append(nodes, &httpProxy)
 
-	raftProxy, err := NewToxiproxyNode(uuid.New().String(), raftPort, proxyRaftPort)
-	if err != nil {
+	raftProxy := toxiproxy.NewProxy()
+	raftProxy.Listen = fmt.Sprintf("0.0.0.0:%d", proxyRaftPort)
+	raftProxy.Upstream = fmt.Sprintf("localhost:%d", raftPort)
+	if err = raftProxy.Start(); err != nil {
 		return &RqliteNode{}, wrapper.Error(err)
 	}
-	nodes = append(nodes, &raftProxy)
 
 	rqliteProc, err := NewRqliteProc(id, httpPort, proxyHTTPPort, raftPort, proxyRaftPort, dir)
 	if err != nil {
 		return &RqliteNode{}, wrapper.Error(err)
 	}
-	nodes = append(nodes, &rqliteProc)
 
 	return &RqliteNode{
 		ID:            id,
@@ -66,7 +70,8 @@ func NewRqliteNode(id uint32) (*RqliteNode, error) {
 		ProxyHTTPPort: proxyHTTPPort,
 		ProxyRaftPort: proxyRaftPort,
 		Dir:           dir,
-		nodes:         nodes,
+		proxies:       []Proxy{httpProxy, raftProxy},
+		proc:          &rqliteProc,
 	}, nil
 }
 
@@ -84,25 +89,24 @@ func NewRqliteNodeWithJoin(id uint32, joinPort uint16) (*RqliteNode, error) {
 	proxyHTTPPort := uint16(6000 + id)
 	proxyRaftPort := uint16(7000 + id)
 
-	nodes := []io.Closer{}
-
-	httpProxy, err := NewToxiproxyNode(uuid.New().String(), httpPort, proxyHTTPPort)
-	if err != nil {
-		return nil, wrapper.Error(err)
+	httpProxy := toxiproxy.NewProxy()
+	httpProxy.Listen = fmt.Sprintf("0.0.0.0:%d", proxyHTTPPort)
+	httpProxy.Upstream = fmt.Sprintf("localhost:%d", httpPort)
+	if err = httpProxy.Start(); err != nil {
+		return &RqliteNode{}, wrapper.Error(err)
 	}
-	nodes = append(nodes, &httpProxy)
 
-	raftProxy, err := NewToxiproxyNode(uuid.New().String(), raftPort, proxyRaftPort)
-	if err != nil {
-		return nil, wrapper.Error(err)
+	raftProxy := toxiproxy.NewProxy()
+	raftProxy.Listen = fmt.Sprintf("0.0.0.0:%d", proxyRaftPort)
+	raftProxy.Upstream = fmt.Sprintf("localhost:%d", raftPort)
+	if err = raftProxy.Start(); err != nil {
+		return &RqliteNode{}, wrapper.Error(err)
 	}
-	nodes = append(nodes, &raftProxy)
 
 	rqliteProc, err := NewRqliteProcWithJoin(id, httpPort, proxyHTTPPort, raftPort, proxyRaftPort, dir, joinPort)
 	if err != nil {
 		return nil, wrapper.Error(err)
 	}
-	nodes = append(nodes, &rqliteProc)
 
 	return &RqliteNode{
 		ID:            id,
@@ -111,7 +115,8 @@ func NewRqliteNodeWithJoin(id uint32, joinPort uint16) (*RqliteNode, error) {
 		ProxyHTTPPort: proxyHTTPPort,
 		ProxyRaftPort: proxyRaftPort,
 		Dir:           dir,
-		nodes:         nodes,
+		proxies:       []Proxy{httpProxy, raftProxy},
+		proc:          &rqliteProc,
 	}, nil
 }
 
@@ -126,41 +131,39 @@ func (n *RqliteNode) Reboot(duration int64, timeout bool) error {
 		<-time.After(time.Duration(duration) * time.Millisecond)
 	}
 
-	nodes := []io.Closer{}
-	httpProxy, err := NewToxiproxyNode(uuid.New().String(), n.HTTPPort, n.ProxyHTTPPort)
-	if err != nil {
+	httpProxy := toxiproxy.NewProxy()
+	httpProxy.Listen = fmt.Sprintf("0.0.0.0:%d", n.ProxyHTTPPort)
+	httpProxy.Upstream = fmt.Sprintf("localhost:%d", n.HTTPPort)
+	if err := httpProxy.Start(); err != nil {
 		return wrapper.Error(err)
 	}
-	nodes = append(nodes, &httpProxy)
 
-	raftProxy, err := NewToxiproxyNode(uuid.New().String(), n.RaftPort, n.ProxyRaftPort)
-	if err != nil {
+	raftProxy := toxiproxy.NewProxy()
+	raftProxy.Listen = fmt.Sprintf("0.0.0.0:%d", n.ProxyRaftPort)
+	raftProxy.Upstream = fmt.Sprintf("localhost:%d", n.RaftPort)
+	if err := raftProxy.Start(); err != nil {
 		return wrapper.Error(err)
 	}
-	nodes = append(nodes, &raftProxy)
 
 	rqliteProc, err := NewRqliteProc(n.ID, n.HTTPPort, n.ProxyHTTPPort, n.RaftPort, n.ProxyRaftPort, n.Dir)
 	if err != nil {
 		return wrapper.Error(err)
 	}
-	nodes = append(nodes, &rqliteProc)
 
-	n.nodes = nodes
+	n.proxies = []Proxy{httpProxy, raftProxy}
+	n.proc = &rqliteProc
 
 	return nil
 }
 
 func (n *RqliteNode) Close() error {
-	var err error
-	for _, node := range n.nodes {
-		if closeErr := node.Close(); closeErr != nil {
-			err = closeErr
-		}
+	for _, p := range n.proxies {
+		p.Stop()
 	}
-	if err != nil {
-		return gorqlite.WrapError(err, "failed to close rqlite node")
+	if err := n.proc.Close(); err != nil {
+		return gorqlite.WrapError(err, "failed to close node")
 	}
-	return err
+	return nil
 }
 
 type RqliteProc struct {

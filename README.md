@@ -28,3 +28,8 @@ make env
 ```
 
 The logs for each node can be found in `tests/log`.
+
+#### Missing Tests
+- [ ] Failover to another node when connected node fails
+- [ ] Failover to another node when leader node is partitioned (so still
+reachable though cannot handle requests)
