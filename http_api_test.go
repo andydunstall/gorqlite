@@ -2,9 +2,11 @@ package gorqlite
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dunstall/gorqlite/mocks"
@@ -31,6 +33,7 @@ func TestHTTPAPIClient_DefaultGet(t *testing.T) {
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
 	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
@@ -38,6 +41,7 @@ func TestHTTPAPIClient_DefaultGet(t *testing.T) {
 	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
+	defer resp.Body.Close()
 	require.Equal(t, expectedResp, resp)
 }
 
@@ -60,13 +64,15 @@ func TestHTTPAPIClient_DefaultPost(t *testing.T) {
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
 	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
 	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
-	resp, err := api.Post("/status")
+	resp, err := api.Post("/status", nil)
 	require.Nil(t, err)
+	defer resp.Body.Close()
 	require.Equal(t, expectedResp, resp)
 }
 
@@ -92,6 +98,7 @@ func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
 	}
 	expectedResp := &http.Response{
 		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
 	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
 	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
@@ -103,6 +110,7 @@ func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
 	)
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
+	defer resp.Body.Close()
 	require.Equal(t, expectedResp, resp)
 }
 

@@ -1,6 +1,7 @@
 package gorqlite
 
 import (
+	"context"
 	"encoding/json"
 )
 
@@ -97,7 +98,11 @@ func NewStatusAPIClientWithClient(client APIClient) *StatusAPIClient {
 }
 
 func (api *StatusAPIClient) Status() (Status, error) {
-	resp, err := api.client.Get("/status")
+	return api.StatusWithContext(context.Background())
+}
+
+func (api *StatusAPIClient) StatusWithContext(ctx context.Context) (Status, error) {
+	resp, err := api.client.GetWithContext(ctx, "/status")
 	if err != nil {
 		return Status{}, WrapError(err, "failed to fetch status")
 	}

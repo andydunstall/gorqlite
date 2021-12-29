@@ -3,7 +3,9 @@
 package gorqlite
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -62,28 +64,33 @@ func NewHTTPAPIClientWithClient(addr string, client httpClient, opts ...HTTPOpti
 }
 
 func (api *HTTPAPIClient) Get(path string) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodGet, path)
+	return api.fetch(context.Background(), http.MethodGet, path, nil)
 }
 
 func (api *HTTPAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodGet, path)
+	return api.fetch(ctx, http.MethodGet, path, nil)
 }
 
-func (api *HTTPAPIClient) Post(path string) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodPost, path)
+func (api *HTTPAPIClient) Post(path string, body []byte) (*http.Response, error) {
+	return api.fetch(context.Background(), http.MethodPost, path, body)
 }
 
-func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodPost, path)
+func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodPost, path, body)
 }
 
-func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string) (*http.Response, error) {
+func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewReader(body)
+	}
+
 	url := &url.URL{
 		Scheme: "http",
 		Host:   api.addr,
 		Path:   path,
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, url.String(), reqBody)
 	if err != nil {
 		return nil, WrapError(err, "failed to fetch: invalid request")
 	}

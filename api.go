@@ -3,11 +3,15 @@
 package gorqlite
 
 import (
+	"context"
 	"net/http"
 )
 
 type APIClient interface {
 	Get(path string) (*http.Response, error)
+	GetWithContext(ctx context.Context, path string) (*http.Response, error)
+	Post(path string, body []byte) (*http.Response, error)
+	PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error)
 }
 
 func IsStatusOK(statusCode int) bool {

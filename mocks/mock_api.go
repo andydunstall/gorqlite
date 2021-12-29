@@ -5,6 +5,7 @@
 package mock_gorqlite
 
 import (
+	context "context"
 	http "net/http"
 	reflect "reflect"
 
@@ -47,4 +48,49 @@ func (m *MockAPIClient) Get(path string) (*http.Response, error) {
 func (mr *MockAPIClientMockRecorder) Get(path interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAPIClient)(nil).Get), path)
+}
+
+// GetWithContext mocks base method.
+func (m *MockAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWithContext", ctx, path)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWithContext indicates an expected call of GetWithContext.
+func (mr *MockAPIClientMockRecorder) GetWithContext(ctx, path interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithContext", reflect.TypeOf((*MockAPIClient)(nil).GetWithContext), ctx, path)
+}
+
+// Post mocks base method.
+func (m *MockAPIClient) Post(path string, body []byte) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Post", path, body)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Post indicates an expected call of Post.
+func (mr *MockAPIClientMockRecorder) Post(path, body interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockAPIClient)(nil).Post), path, body)
+}
+
+// PostWithContext mocks base method.
+func (m *MockAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PostWithContext", ctx, path, body)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PostWithContext indicates an expected call of PostWithContext.
+func (mr *MockAPIClientMockRecorder) PostWithContext(ctx, path, body interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostWithContext", reflect.TypeOf((*MockAPIClient)(nil).PostWithContext), ctx, path, body)
 }

@@ -6,14 +6,14 @@ import (
 )
 
 type Error struct {
-	Inner      error
+	Inner      string
 	StackTrace string
 	Message    string
 }
 
 func NewError(messagef string, msgArgs ...interface{}) *Error {
 	return &Error{
-		Inner:      nil,
+		Inner:      "",
 		Message:    fmt.Sprintf(messagef, msgArgs...),
 		StackTrace: string(debug.Stack()),
 	}
@@ -21,7 +21,7 @@ func NewError(messagef string, msgArgs ...interface{}) *Error {
 
 func WrapError(err error, messagef string, msgArgs ...interface{}) *Error {
 	return &Error{
-		Inner:      err,
+		Inner:      err.Error(),
 		Message:    fmt.Sprintf(messagef, msgArgs...),
 		StackTrace: string(debug.Stack()),
 	}
@@ -29,8 +29,8 @@ func WrapError(err error, messagef string, msgArgs ...interface{}) *Error {
 
 func (err Error) Error() string {
 	s := err.Message
-	if err.Inner != nil {
-		return fmt.Sprintf("%s: %s", s, err.Inner.Error())
+	if err.Inner != "" {
+		return fmt.Sprintf("%s: %s", s, err.Inner)
 	}
 	return s
 }

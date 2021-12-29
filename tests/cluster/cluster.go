@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/dunstall/gorqlite"
@@ -68,6 +69,19 @@ func (c *Cluster) NodeAddrs() map[uint32]string {
 		nodeAddresses[id] = addr
 	}
 	return nodeAddresses
+}
+
+func (c *Cluster) RandomNodeAddr() string {
+	nodes := c.NodeAddrs()
+	if len(nodes) == 0 {
+		return ""
+	}
+
+	ids := make([]uint32, len(nodes))
+	for id := range nodes {
+		ids = append(ids, id)
+	}
+	return nodes[ids[rand.Int()%len(ids)]]
 }
 
 func (c *Cluster) AddNode(id uint32, node *RqliteNode) {
