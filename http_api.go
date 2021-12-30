@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // Define here to generate mock.
@@ -15,11 +16,22 @@ type RoundTripper interface {
 	http.RoundTripper
 }
 
+type Clock interface {
+	Sleep(d time.Duration)
+}
+
+type SystemClock struct{}
+
+func (c *SystemClock) Sleep(d time.Duration) {
+	<-time.After(d)
+}
+
 type HTTPConfig struct {
 	ActiveHostRoundRobin bool
 	HTTPHeaders          http.Header
 	Transport            http.RoundTripper
 	RedirectAttempts     int
+	clock                Clock
 }
 
 type HTTPOption func(conf *HTTPConfig)
@@ -30,6 +42,7 @@ func DefaultHTTPConfig() *HTTPConfig {
 		HTTPHeaders:          make(http.Header),
 		Transport:            http.DefaultTransport,
 		RedirectAttempts:     10,
+		clock:                &SystemClock{},
 	}
 }
 
@@ -54,6 +67,12 @@ func WithTransport(transport http.RoundTripper) HTTPOption {
 func WithRedirectAttempts(redirectAttempts int) HTTPOption {
 	return func(conf *HTTPConfig) {
 		conf.RedirectAttempts = redirectAttempts
+	}
+}
+
+func WithClock(clock Clock) HTTPOption {
+	return func(conf *HTTPConfig) {
+		conf.clock = clock
 	}
 }
 
@@ -107,18 +126,13 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 		reqBody = bytes.NewReader(body)
 	}
 
-	// TODO(AD) Add a use leader flag. Otherwise will be redirected when leader
-	// is known.
-	activeHost := api.activeHost()
-	if activeHost == "" {
-		return nil, NewError("failed to fetch: no addresses given")
-	}
-
 	redirectAttempts := 0
+	retryAttempts := 0
 	u := &url.URL{
 		Scheme: "http",
-		Host:   activeHost,
-		Path:   path,
+		// Host set per retry.
+		Host: "",
+		Path: path,
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
@@ -129,9 +143,29 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 	}
 
 	for {
+		// TODO(AD) Add a use leader flag. Otherwise will be redirected when leader
+		// is known.
+		activeHost := api.activeHost()
+		if activeHost == "" {
+			return nil, NewError("failed to fetch: no addresses given")
+		}
+		req.URL.Host = activeHost
+		req.Host = activeHost
+
 		resp, err := api.client.Do(req)
-		if err != nil {
-			return nil, WrapError(err, "failed to fetch")
+		if err != nil || isRetryable(resp.StatusCode) {
+			if retryAttempts >= (len(api.hosts) * 3) {
+				if err != nil {
+					return nil, WrapError(err, "failed to fetch: max retries exceeded")
+				}
+				return nil, NewError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
+			}
+
+			api.conf.clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
+
+			api.rotateActiveHost()
+			retryAttempts++
+			continue
 		}
 
 		if !isRedirect(resp.StatusCode) {
@@ -173,4 +207,27 @@ func isRedirect(statusCode int) bool {
 		}
 	}
 	return false
+}
+
+func isRetryable(statusCode int) bool {
+	retryableCodes := []int{
+		http.StatusRequestTimeout,
+		http.StatusRequestEntityTooLarge,
+		http.StatusTooManyRequests,
+		http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+	}
+	for _, retryableCode := range retryableCodes {
+		if statusCode == retryableCode {
+			return true
+		}
+	}
+	return false
+
+}
+
+func waitTimeExponential(attempt int, base time.Duration) time.Duration {
+	// 2^attempt * base
+	return time.Duration(1<<attempt) * base
 }

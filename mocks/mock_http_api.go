@@ -7,6 +7,7 @@ package mock_gorqlite
 import (
 	http "net/http"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -47,4 +48,39 @@ func (m *MockRoundTripper) RoundTrip(arg0 *http.Request) (*http.Response, error)
 func (mr *MockRoundTripperMockRecorder) RoundTrip(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RoundTrip", reflect.TypeOf((*MockRoundTripper)(nil).RoundTrip), arg0)
+}
+
+// MockClock is a mock of Clock interface.
+type MockClock struct {
+	ctrl     *gomock.Controller
+	recorder *MockClockMockRecorder
+}
+
+// MockClockMockRecorder is the mock recorder for MockClock.
+type MockClockMockRecorder struct {
+	mock *MockClock
+}
+
+// NewMockClock creates a new mock instance.
+func NewMockClock(ctrl *gomock.Controller) *MockClock {
+	mock := &MockClock{ctrl: ctrl}
+	mock.recorder = &MockClockMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockClock) EXPECT() *MockClockMockRecorder {
+	return m.recorder
+}
+
+// Sleep mocks base method.
+func (m *MockClock) Sleep(d time.Duration) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Sleep", d)
+}
+
+// Sleep indicates an expected call of Sleep.
+func (mr *MockClockMockRecorder) Sleep(d interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sleep", reflect.TypeOf((*MockClock)(nil).Sleep), d)
 }

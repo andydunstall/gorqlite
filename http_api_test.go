@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dunstall/gorqlite/mocks"
 	gomock "github.com/golang/mock/gomock"
@@ -118,6 +119,144 @@ func TestHTTPAPIClient_GetWithHeaders(t *testing.T) {
 	require.Equal(t, expectedResp, resp)
 }
 
+func TestHTTPAPIClient_RetryFailedRequestsSucceeds(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	addrs := []string{"rqlite-badstatus", "rqlite-network", "rqlite-ok"}
+
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	clock := mock_gorqlite.NewMockClock(ctrl)
+	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
+
+	clock.EXPECT().Sleep(100 * time.Millisecond)
+	clock.EXPECT().Sleep(200 * time.Millisecond)
+
+	// First return a bad status.
+	expectedReq1 := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite-badstatus",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite-badstatus",
+	}
+	expectedResp1 := &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
+	}
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq1)).Return(expectedResp1, nil)
+
+	// Next return a network error.
+	expectedReq2 := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite-network",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite-network",
+	}
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq2)).Return(nil, fmt.Errorf("network error"))
+
+	// Return OK from the final host.
+	expectedReq3 := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite-ok",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite-ok",
+	}
+	expectedResp3 := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
+	}
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq3)).Return(expectedResp3, nil)
+
+	resp, err := api.Get("/status")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, expectedResp3, resp)
+}
+
+func TestHTTPAPIClient_RetryFailedRequestsFails(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	addrs := []string{"rqlite-badstatus", "rqlite-network"}
+
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	clock := mock_gorqlite.NewMockClock(ctrl)
+	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
+
+	for i := 0; i < 6; i++ {
+		d := (100 << i) * time.Millisecond
+		clock.EXPECT().Sleep(d)
+	}
+
+	// First return a bad status.
+	expectedReq1 := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite-badstatus",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite-badstatus",
+	}
+	expectedResp1 := &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       ioutil.NopCloser(strings.NewReader("")),
+	}
+
+	// Next return a network error.
+	expectedReq2 := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite-network",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite-network",
+	}
+
+	// Expect 6 retries.
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq1)).Return(expectedResp1, nil)
+	for i := 0; i < 3; i++ {
+		transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq2)).Return(nil, fmt.Errorf("network error"))
+		transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq1)).Return(expectedResp1, nil)
+	}
+
+	resp, err := api.Get("/status")
+	require.Error(t, err)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+}
+
 func TestHTTPAPIClient_WithActiveHostRoundRobin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -160,7 +299,7 @@ func TestHTTPAPIClient_WithoutActiveHostRoundRobin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	addrs := []string{"rqlite", "rqlite-0", "rqlite-0"}
+	addrs := []string{"rqlite", "rqlite-0", "rqlite-1"}
 
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithActiveHostRoundRobin(false))
