@@ -8,7 +8,7 @@ hours to check for leaks or rare errors
 - [ ] Add QueryResult and ExecuteResult lookup methods from rqlite-js
 - [ ] Add HTTP fetch error handling from rqlite-js
   * Fail over
-  * Retries
+  * Retries (can partition all nodes for a few seconds)
   * Redirect
 - [ ] Add docs (both MD docs and in the code itself)
 - [ ] Check rqlite/gorqlite (and other SDKs) for any missing functionality

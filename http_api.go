@@ -10,8 +10,14 @@ import (
 	"net/url"
 )
 
+// Define here to generate mock.
+type RoundTripper interface {
+	http.RoundTripper
+}
+
 type HTTPConfig struct {
 	HTTPHeaders http.Header
+	Transport   http.RoundTripper
 }
 
 type HTTPOption func(conf *HTTPConfig)
@@ -19,6 +25,7 @@ type HTTPOption func(conf *HTTPConfig)
 func DefaultHTTPConfig() *HTTPConfig {
 	return &HTTPConfig{
 		HTTPHeaders: make(http.Header),
+		Transport:   http.DefaultTransport,
 	}
 }
 
@@ -28,13 +35,15 @@ func WithHTTPHeaders(headers http.Header) HTTPOption {
 	}
 }
 
-type httpClient interface {
-	Do(req *http.Request) (*http.Response, error)
+func WithTransport(transport http.RoundTripper) HTTPOption {
+	return func(conf *HTTPConfig) {
+		conf.Transport = transport
+	}
 }
 
 type HTTPAPIClient struct {
 	addr   string
-	client httpClient
+	client *http.Client
 	conf   *HTTPConfig
 }
 
@@ -43,18 +52,11 @@ func NewHTTPAPIClient(addr string, opts ...HTTPOption) *HTTPAPIClient {
 	for _, opt := range opts {
 		opt(conf)
 	}
-	client := &http.Client{}
-	return &HTTPAPIClient{
-		addr:   addr,
-		client: client,
-		conf:   conf,
-	}
-}
-
-func NewHTTPAPIClientWithClient(addr string, client httpClient, opts ...HTTPOption) *HTTPAPIClient {
-	conf := DefaultHTTPConfig()
-	for _, opt := range opts {
-		opt(conf)
+	client := &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Transport: conf.Transport,
 	}
 	return &HTTPAPIClient{
 		addr:   addr,

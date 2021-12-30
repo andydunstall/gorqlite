@@ -35,10 +35,10 @@ func TestHTTPAPIClient_DefaultGet(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
+	api := NewHTTPAPIClient("rqlite", WithTransport(transport))
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
 	defer resp.Body.Close()
@@ -66,17 +66,17 @@ func TestHTTPAPIClient_DefaultPost(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClientWithClient("rqlite", httpClient)
+	api := NewHTTPAPIClient("rqlite", WithTransport(transport))
 	resp, err := api.Post("/status", nil)
 	require.Nil(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, expectedResp, resp)
 }
 
-func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
+func TestHTTPAPIClient_GetWithHeaders(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -100,14 +100,48 @@ func TestHTTPAPIClient_GetWithConfig(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	httpClient := mock_gorqlite.NewMockhttpClient(ctrl)
-	httpClient.EXPECT().Do(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClientWithClient(
+	api := NewHTTPAPIClient(
 		"rqlite",
-		httpClient,
 		WithHTTPHeaders(headers),
+		WithTransport(transport),
 	)
+	resp, err := api.Get("/status")
+	require.Nil(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, expectedResp, resp)
+}
+
+func TestHTTPAPIClient_NoRedirects(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	expectedReq := &http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "rqlite",
+			Path:   "/status",
+		},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Host:       "rqlite",
+	}
+	expectedResp := &http.Response{
+		StatusCode: http.StatusMovedPermanently,
+		Header: http.Header{
+			"Location": []string{"http://0.0.0.0:0"},
+		},
+		Body: ioutil.NopCloser(strings.NewReader("")),
+	}
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
+
+	api := NewHTTPAPIClient("rqlite", WithTransport(transport))
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
 	defer resp.Body.Close()
