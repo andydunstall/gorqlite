@@ -16,16 +16,18 @@ type RoundTripper interface {
 }
 
 type HTTPConfig struct {
-	HTTPHeaders http.Header
-	Transport   http.RoundTripper
+	HTTPHeaders      http.Header
+	Transport        http.RoundTripper
+	RedirectAttempts int
 }
 
 type HTTPOption func(conf *HTTPConfig)
 
 func DefaultHTTPConfig() *HTTPConfig {
 	return &HTTPConfig{
-		HTTPHeaders: make(http.Header),
-		Transport:   http.DefaultTransport,
+		HTTPHeaders:      make(http.Header),
+		Transport:        http.DefaultTransport,
+		RedirectAttempts: 10,
 	}
 }
 
@@ -38,6 +40,12 @@ func WithHTTPHeaders(headers http.Header) HTTPOption {
 func WithTransport(transport http.RoundTripper) HTTPOption {
 	return func(conf *HTTPConfig) {
 		conf.Transport = transport
+	}
+}
+
+func WithRedirectAttempts(redirectAttempts int) HTTPOption {
+	return func(conf *HTTPConfig) {
+		conf.RedirectAttempts = redirectAttempts
 	}
 }
 
@@ -87,12 +95,13 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 		reqBody = bytes.NewReader(body)
 	}
 
-	url := &url.URL{
+	redirectAttempts := 0
+	u := &url.URL{
 		Scheme: "http",
 		Host:   api.addr,
 		Path:   path,
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url.String(), reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
 		return nil, WrapError(err, "failed to fetch: invalid request")
 	}
@@ -100,9 +109,36 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 		req.Header = api.conf.HTTPHeaders
 	}
 
-	resp, err := api.client.Do(req)
-	if err != nil {
-		return nil, WrapError(err, "failed to fetch")
+	for {
+		resp, err := api.client.Do(req)
+		if err != nil {
+			return nil, WrapError(err, "failed to fetch")
+		}
+
+		if !isRedirect(resp.StatusCode) {
+			return resp, nil
+		}
+
+		if redirectAttempts >= api.conf.RedirectAttempts {
+			return nil, NewError("failed to fetch: max redirects exceeded (%d)", api.conf.RedirectAttempts)
+		}
+		u, err := url.Parse(resp.Header.Get("location"))
+		if err != nil {
+			return nil, WrapError(err, "failed to fetch: invalid redirect url")
+		}
+		req.URL = u
+		redirectAttempts++
+
+		// TODO(AD) If redirected store new leader?.
 	}
-	return resp, nil
+}
+
+func isRedirect(statusCode int) bool {
+	redirectCodes := []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther}
+	for _, redirectCode := range redirectCodes {
+		if statusCode == redirectCode {
+			return true
+		}
+	}
+	return false
 }

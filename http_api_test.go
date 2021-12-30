@@ -114,6 +114,44 @@ func TestHTTPAPIClient_GetWithHeaders(t *testing.T) {
 	require.Equal(t, expectedResp, resp)
 }
 
+func TestHTTPAPIClient_WithRedirect(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
+	// Update the redirect path for each request to check its being updated.
+	for i := 0; i < 4; i++ {
+		expectedReq := &http.Request{
+			Method: http.MethodGet,
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   "rqlite",
+				Path:   fmt.Sprintf("/status-%d", i),
+			},
+			Proto:      "HTTP/1.1",
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Header:     make(http.Header),
+			Host:       "rqlite",
+		}
+		resp := &http.Response{
+			StatusCode: http.StatusMovedPermanently,
+			Header: http.Header{
+				"Location": []string{fmt.Sprintf("http://rqlite/status-%d", i+1)},
+			},
+			Body: ioutil.NopCloser(strings.NewReader("")),
+		}
+		transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(resp, nil)
+	}
+
+	api := NewHTTPAPIClient("rqlite", WithRedirectAttempts(3), WithTransport(transport))
+	resp, err := api.Get("/status-0")
+	require.Error(t, err)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+}
+
 func TestHTTPAPIClient_NoRedirects(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -141,11 +179,12 @@ func TestHTTPAPIClient_NoRedirects(t *testing.T) {
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClient("rqlite", WithTransport(transport))
+	api := NewHTTPAPIClient("rqlite", WithTransport(transport), WithRedirectAttempts(0))
 	resp, err := api.Get("/status")
-	require.Nil(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, expectedResp, resp)
+	require.Error(t, err)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 }
 
 type httpReqEqMatcher struct {
