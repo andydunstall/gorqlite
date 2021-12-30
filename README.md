@@ -3,6 +3,15 @@ A client library for [rqlite](https://github.com/rqlite/rqlite) based on [rqlite
 
 ## TODO
 - [ ] Run go.dev/doc/diagnostic
+  * Also setup a long running test that just makes random queries for a few
+hours to check for leaks or rare errors
+- [ ] Add QueryResult and ExecuteResult lookup methods from rqlite-js
+- [ ] Add HTTP fetch error handling from rqlite-js
+  * Fail over
+  * Retries
+  * Redirect
+- [ ] Add docs (both MD docs and in the code itself)
+- [ ] Check rqlite/gorqlite (and other SDKs) for any missing functionality
 
 ## Testing
 Tests are split into unit tests and system tests.
