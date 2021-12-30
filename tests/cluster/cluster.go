@@ -71,6 +71,14 @@ func (c *Cluster) NodeAddrs() map[uint32]string {
 	return nodeAddresses
 }
 
+func (c *Cluster) Addrs() []string {
+	addrs := []string{}
+	for _, addr := range c.NodeAddrs() {
+		addrs = append(addrs, addr)
+	}
+	return addrs
+}
+
 func (c *Cluster) RandomNodeAddr() string {
 	nodes := c.NodeAddrs()
 	if len(nodes) == 0 {
@@ -117,7 +125,7 @@ func (c *Cluster) isHealthy() bool {
 			"node_addr": addr,
 		})
 
-		statusClient := gorqlite.NewStatusAPIClient(addr)
+		statusClient := gorqlite.NewStatusAPIClient(gorqlite.NewHTTPAPIClient([]string{addr}))
 		status, err := statusClient.Status()
 		if err != nil {
 			lg.Debugf("failed to get status: %s", err)

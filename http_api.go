@@ -16,18 +16,26 @@ type RoundTripper interface {
 }
 
 type HTTPConfig struct {
-	HTTPHeaders      http.Header
-	Transport        http.RoundTripper
-	RedirectAttempts int
+	ActiveHostRoundRobin bool
+	HTTPHeaders          http.Header
+	Transport            http.RoundTripper
+	RedirectAttempts     int
 }
 
 type HTTPOption func(conf *HTTPConfig)
 
 func DefaultHTTPConfig() *HTTPConfig {
 	return &HTTPConfig{
-		HTTPHeaders:      make(http.Header),
-		Transport:        http.DefaultTransport,
-		RedirectAttempts: 10,
+		ActiveHostRoundRobin: true,
+		HTTPHeaders:          make(http.Header),
+		Transport:            http.DefaultTransport,
+		RedirectAttempts:     10,
+	}
+}
+
+func WithActiveHostRoundRobin(roundRobin bool) HTTPOption {
+	return func(conf *HTTPConfig) {
+		conf.ActiveHostRoundRobin = roundRobin
 	}
 }
 
@@ -50,12 +58,13 @@ func WithRedirectAttempts(redirectAttempts int) HTTPOption {
 }
 
 type HTTPAPIClient struct {
-	addr   string
-	client *http.Client
-	conf   *HTTPConfig
+	hosts           []string
+	activeHostIndex int
+	client          *http.Client
+	conf            *HTTPConfig
 }
 
-func NewHTTPAPIClient(addr string, opts ...HTTPOption) *HTTPAPIClient {
+func NewHTTPAPIClient(hosts []string, opts ...HTTPOption) *HTTPAPIClient {
 	conf := DefaultHTTPConfig()
 	for _, opt := range opts {
 		opt(conf)
@@ -67,9 +76,10 @@ func NewHTTPAPIClient(addr string, opts ...HTTPOption) *HTTPAPIClient {
 		Transport: conf.Transport,
 	}
 	return &HTTPAPIClient{
-		addr:   addr,
-		client: client,
-		conf:   conf,
+		hosts:           hosts,
+		activeHostIndex: 0,
+		client:          client,
+		conf:            conf,
 	}
 }
 
@@ -90,15 +100,24 @@ func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string, body
 }
 
 func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+	defer api.rotateActiveHost()
+
 	var reqBody io.Reader
 	if body != nil {
 		reqBody = bytes.NewReader(body)
 	}
 
+	// TODO(AD) Add a use leader flag. Otherwise will be redirected when leader
+	// is known.
+	activeHost := api.activeHost()
+	if activeHost == "" {
+		return nil, NewError("failed to fetch: no addresses given")
+	}
+
 	redirectAttempts := 0
 	u := &url.URL{
 		Scheme: "http",
-		Host:   api.addr,
+		Host:   activeHost,
 		Path:   path,
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
@@ -130,6 +149,19 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 		redirectAttempts++
 
 		// TODO(AD) If redirected store new leader?.
+	}
+}
+
+func (api *HTTPAPIClient) activeHost() string {
+	if 0 <= api.activeHostIndex && api.activeHostIndex < len(api.hosts) {
+		return api.hosts[api.activeHostIndex]
+	}
+	return ""
+}
+
+func (api *HTTPAPIClient) rotateActiveHost() {
+	if api.conf.ActiveHostRoundRobin {
+		api.activeHostIndex = ((api.activeHostIndex + 1) % len(api.hosts))
 	}
 }
 

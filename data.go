@@ -60,13 +60,7 @@ type DataAPIClient struct {
 	client APIClient
 }
 
-func NewDataAPIClient(addr string) *DataAPIClient {
-	return &DataAPIClient{
-		client: NewHTTPAPIClient(addr),
-	}
-}
-
-func NewDataAPIClientWithClient(client APIClient) *DataAPIClient {
+func NewDataAPIClient(client APIClient) *DataAPIClient {
 	return &DataAPIClient{
 		client: client,
 	}

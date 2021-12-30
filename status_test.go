@@ -283,7 +283,7 @@ func TestStatusAPIClient_v6_7_0(t *testing.T) {
 		},
 	}
 
-	statusClient := NewStatusAPIClientWithClient(apiClient)
+	statusClient := NewStatusAPIClient(apiClient)
 	status, err := statusClient.Status()
 	require.Nil(t, err)
 	require.Equal(t, expected, status)
@@ -300,7 +300,7 @@ func TestStatusAPIClient_BadStatus(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
 
-	statusClient := NewStatusAPIClientWithClient(apiClient)
+	statusClient := NewStatusAPIClient(apiClient)
 	_, err := statusClient.Status()
 	require.Error(t, err)
 }
@@ -312,7 +312,7 @@ func TestStatusAPIClient_NetworkError(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(nil, fmt.Errorf("network err"))
 
-	statusClient := NewStatusAPIClientWithClient(apiClient)
+	statusClient := NewStatusAPIClient(apiClient)
 	_, err := statusClient.Status()
 	require.Error(t, err)
 }

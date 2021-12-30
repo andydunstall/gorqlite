@@ -85,13 +85,7 @@ type StatusAPIClient struct {
 	client APIClient
 }
 
-func NewStatusAPIClient(addr string) *StatusAPIClient {
-	return &StatusAPIClient{
-		client: NewHTTPAPIClient(addr),
-	}
-}
-
-func NewStatusAPIClientWithClient(client APIClient) *StatusAPIClient {
+func NewStatusAPIClient(client APIClient) *StatusAPIClient {
 	return &StatusAPIClient{
 		client: client,
 	}
