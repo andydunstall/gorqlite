@@ -102,8 +102,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	for i := 0; i < numRows; i++ {
 		sql = append(sql, fmt.Sprintf(`INSERT INTO foo(name) VALUES("justin-%d")`, i))
 	}
-	// TODO(AD) Missing `transaction: true` option.
-	execResults, err = conn.Execute(sql)
+	execResults, err = conn.Execute(sql, gorqlite.WithTransaction(true))
 	require.Nil(err)
 	require.Equal("", execResults.GetFirstError())
 	require.Equal(numRows, len(execResults.Results))
@@ -115,7 +114,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 
 	queryResults, err = conn.Query([]string{
 		`SELECT COUNT(*) AS total FROM foo WHERE name like("justin-%")`,
-	})
+	}, gorqlite.WithConsistency("strong"))
 	require.Nil(err)
 	require.Equal("", queryResults.GetFirstError())
 	require.Equal(gorqlite.QueryRows{

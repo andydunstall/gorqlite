@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Define here to generate mock.
+// Redefine here to generate mock.
 type RoundTripper interface {
 	http.RoundTripper
 }
@@ -26,25 +26,22 @@ func (c *SystemClock) Sleep(d time.Duration) {
 	<-time.After(d)
 }
 
-type httpAPIClient struct {
+type HTTPAPIClient struct {
 	hosts           []string
 	activeHostIndex int
 	client          *http.Client
 	conf            *Config
 }
 
-func newHTTPAPIClient(hosts []string, opts ...Option) *httpAPIClient {
+func NewHTTPAPIClient(hosts []string, opts ...Option) *HTTPAPIClient {
 	conf := DefaultConfig()
 	for _, opt := range opts {
 		opt(conf)
 	}
 	client := &http.Client{
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 		Transport: conf.Transport,
 	}
-	return &httpAPIClient{
+	return &HTTPAPIClient{
 		hosts:           hosts,
 		activeHostIndex: 0,
 		client:          client,
@@ -52,49 +49,60 @@ func newHTTPAPIClient(hosts []string, opts ...Option) *httpAPIClient {
 	}
 }
 
-func (api *httpAPIClient) Get(path string) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodGet, path, nil)
+func (api *HTTPAPIClient) Get(path string, opts ...Option) (*http.Response, error) {
+	return api.fetch(context.Background(), http.MethodGet, path, nil, opts...)
 }
 
-func (api *httpAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodGet, path, nil)
+func (api *HTTPAPIClient) GetWithContext(ctx context.Context, path string, opts ...Option) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodGet, path, nil, opts...)
 }
 
-func (api *httpAPIClient) Post(path string, body []byte) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodPost, path, body)
+func (api *HTTPAPIClient) Post(path string, body []byte, opts ...Option) (*http.Response, error) {
+	return api.fetch(context.Background(), http.MethodPost, path, body, opts...)
 }
 
-func (api *httpAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodPost, path, body)
+func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string, body []byte, opts ...Option) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodPost, path, body, opts...)
 }
 
-func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
-	defer api.rotateActiveHost()
+func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body []byte, opts ...Option) (*http.Response, error) {
+	defer api.rotateActiveHost(false)
+
+	// Apply overrides to a copy of api conf.
+	conf := *api.conf
+	for _, opt := range opts {
+		opt(&conf)
+	}
 
 	var reqBody io.Reader
 	if body != nil {
 		reqBody = bytes.NewReader(body)
 	}
 
-	redirectAttempts := 0
 	retryAttempts := 0
+	query := url.Values{}
+	if conf.Transaction {
+		query.Add("transaction", "")
+	}
+	if conf.Consistency != "" {
+		query.Add("level", conf.Consistency)
+	}
 	u := &url.URL{
 		Scheme: "http",
 		// Host set per retry.
-		Host: "",
-		Path: path,
+		Host:     "",
+		Path:     path,
+		RawQuery: query.Encode(),
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
 		return nil, WrapError(err, "failed to fetch: invalid request")
 	}
-	if api.conf.HTTPHeaders != nil {
-		req.Header = api.conf.HTTPHeaders
+	if conf.HTTPHeaders != nil {
+		req.Header = conf.HTTPHeaders
 	}
 
 	for {
-		// TODO(AD) Add a use leader flag. Otherwise will be redirected when leader
-		// is known.
 		activeHost := api.activeHost()
 		if activeHost == "" {
 			return nil, NewError("failed to fetch: no addresses given")
@@ -103,60 +111,40 @@ func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body [
 		req.Host = activeHost
 
 		resp, err := api.client.Do(req)
-		if err != nil || isRetryable(resp.StatusCode) {
-			if retryAttempts >= (len(api.hosts) * 3) {
-				if err != nil {
-					return nil, WrapError(err, "failed to fetch: max retries exceeded")
-				}
-				return nil, NewError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
-			}
-
-			api.conf.clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
-
-			api.rotateActiveHost()
-			retryAttempts++
-			continue
-		}
-
-		if !isRedirect(resp.StatusCode) {
+		if err == nil && isStatusOK(resp.StatusCode) {
 			return resp, nil
 		}
 
-		if redirectAttempts >= api.conf.RedirectAttempts {
-			return nil, NewError("failed to fetch: max redirects exceeded (%d)", api.conf.RedirectAttempts)
+		if err == nil && !isRetryable(resp.StatusCode) {
+			return nil, NewError("failed to fetch: bad status code: status: %d", resp.StatusCode)
 		}
-		u, err := url.Parse(resp.Header.Get("location"))
-		if err != nil {
-			return nil, WrapError(err, "failed to fetch: invalid redirect url")
-		}
-		req.URL = u
-		redirectAttempts++
 
-		// TODO(AD) If redirected store new leader?.
+		if retryAttempts >= (len(api.hosts) * 3) {
+			if err != nil {
+				return nil, WrapError(err, "failed to fetch: max retries exceeded")
+			}
+			return nil, NewError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
+		}
+
+		conf.Clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
+
+		// Force rotate even if round robin is disabled.
+		api.rotateActiveHost(true)
+		retryAttempts++
 	}
 }
 
-func (api *httpAPIClient) activeHost() string {
+func (api *HTTPAPIClient) activeHost() string {
 	if 0 <= api.activeHostIndex && api.activeHostIndex < len(api.hosts) {
 		return api.hosts[api.activeHostIndex]
 	}
 	return ""
 }
 
-func (api *httpAPIClient) rotateActiveHost() {
-	if api.conf.ActiveHostRoundRobin {
+func (api *HTTPAPIClient) rotateActiveHost(force bool) {
+	if api.conf.ActiveHostRoundRobin || force {
 		api.activeHostIndex = ((api.activeHostIndex + 1) % len(api.hosts))
 	}
-}
-
-func isRedirect(statusCode int) bool {
-	redirectCodes := []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther}
-	for _, redirectCode := range redirectCodes {
-		if statusCode == redirectCode {
-			return true
-		}
-	}
-	return false
 }
 
 func isRetryable(statusCode int) bool {
@@ -174,7 +162,6 @@ func isRetryable(statusCode int) bool {
 		}
 	}
 	return false
-
 }
 
 func waitTimeExponential(attempt int, base time.Duration) time.Duration {

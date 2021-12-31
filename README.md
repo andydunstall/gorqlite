@@ -1,41 +1,137 @@
 # gorqlite
-A client library for [rqlite](https://github.com/rqlite/rqlite) based on [rqlite-js](https://github.com/rqlite/rqlite-js).
+A client library for [rqlite](https://github.com/rqlite/rqlite), the
+lightweight, distributed database built on SQLite. This package is designed to
+provide a Go interface for the RQLite API endpoints.
+
+The design of this library is based on [rqlite-js](https://github.com/rqlite/rqlite-js).
+
+## In Progress
+- [ ] Add travis CI tests to test:
+  * `make generate` makes no changes
+  * `make fmt` makes no changes
+  * `make lint` passes 
+  * `make test` passes
+  * `make system-test` passes
+- [ ] Add API docs (and code level comments)
+- [ ] Add support for follow redirects and cache leader (see https://github.com/rqlite/rqlite/blob/master/DOC/DATA_API.md#disabling-request-forwarding)
+- [ ] Add queries to result types (such as `QueryResult.Get("name")`)
+- [ ] Add system tests for:
+  * consistency and transactions
+  * node/leader failover/retries
+- [ ] Add `/nodes` and `/ready` APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/DIAGNOSTICS.md)
+- [ ] Add backup APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/BACKUPS.md)
+- [ ] Add long running test with random queries to check for leaks (see go.dev/doc/diagnostic)
+- [ ] Review rqlite/rqlite-js, rqlite/gorqlite and rqlite/pyrqlite SDKs for missing tests, invalid handling of requests/responses, etc
 
 ## Examples
+Contains the same examples as [rqlite-js](https://github.com/rqlite/rqlite-js)
+ported into `gorqlite`. See `examples/`, where each example will spin up its
+own local cluster (see `Dockerfile` and `make env` for an environment to run
+in).
+
+### CREATE TABLE
+Connects to an rqlite cluster and creates a table. See `examples/create_table`.
 ```go
-conn := gorqlite.Open(addrs, WithConsistencyLevel("strong"))
+conn := gorqlite.Open(clusterAddrs)
 
-status, err := conn.StatusWithContext(ctx)
+// Create table.
+execResult, err := conn.Execute([]string{
+  "CREATE TABLE foo (id integer not null primary key, name text)",
+})
 if err != nil {
-  // ...
+  log.Fatal(err)
 }
-fmt.Println("status", status)
-
-execResults, err := conn.Execute(sqlStatements)
-if err != nil {
-  // ...
-}
-for _, res := range execResults.Results {
-  fmt.Println("rows affected", res.RowsAffected)
-}
-
-queryResults, err := conn.ExecuteResult(sqlStatements)
-if err != nil {
-  // ...
+if execResult.HasError() {
+  log.Fatal(execResult.GetFirstError())
 }
 ```
 
-## TODO
-- [ ] Run go.dev/doc/diagnostic
-  * Also setup a long running test that just makes random queries for a few
-hours to check for leaks or rare errors
-- [ ] Add QueryResult and ExecuteResult lookup methods from rqlite-js
-- [ ] Add HTTP fetch error handling from rqlite-js
-  * Fail over
-  * Retries (can partition all nodes for a few seconds)
-  * Redirect
-- [ ] Add docs (both MD docs and in the code itself)
-- [ ] Check rqlite/gorqlite (and other SDKs) for any missing functionality
+### Multiple QUERY
+Inserts a row then selects the row. See `examples/query`.
+```go
+execResult, err = conn.Execute([]string{
+  `INSERT INTO foo(name) VALUES("fiona")`,
+})
+if err != nil {
+  log.Fatal(err)
+}
+if execResult.HasError() {
+  log.Fatal(execResult.GetFirstError())
+}
+id := execResult.Results[0].LastInsertId
+log.Infof("id of the inserted row: %d" ,id)
+
+queryResult, err := conn.Query([]string{
+  fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
+})
+if err != nil {
+  log.Fatal(err)
+}
+if queryResult.HasError() {
+  log.Fatal(queryResult.GetFirstError())
+}
+log.Info(queryResult.Results[0])
+
+execResult, err = conn.Execute([]string{
+  `UPDATE foo SET name="justin" WHERE name="fiona"`,
+})
+if err != nil {
+  log.Fatal(err)
+}
+if execResult.HasError() {
+  log.Fatal(execResult.GetFirstError())
+}
+rowsAffected := execResult.Results[0].RowsAffected
+log.Infof("rows affected: %d" ,rowsAffected)
+
+queryResult, err = conn.Query([]string{
+  fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
+})
+if err != nil {
+  log.Fatal(err)
+}
+if queryResult.HasError() {
+  log.Fatal(queryResult.GetFirstError())
+}
+log.Info(queryResult.Results[0])
+```
+
+### Transactions
+Runs multiple queries within a transaction. See `examples/transaction`.
+```go
+sql := []string{
+  `INSERT INTO foo(name) VALUES("fiona")`,
+  `INSERT INTO bar(name) VALUES("test")`,
+}
+execResult, err = conn.Execute(sql, gorqlite.WithTransaction(true))
+if err != nil {
+  log.Fatal(err)
+}
+if execResult.HasError() {
+  log.Fatal(execResult.GetFirstError())
+}
+log.Infof("id for first insert: %d", execResult.Results[0].LastInsertId)
+log.Infof("id for second insert: %d", execResult.Results[1].LastInsertId)
+```
+
+### Consistency
+Runs multiple select queries with [strong consistency](https://github.com/rqlite/rqlite/blob/master/DOC/CONSISTENCY.md).
+See `examples/consistency`.
+```go
+sql = []string{
+  `SELECT name FROM foo WHERE id="1"`,
+  `SELECT id FROM bar WHERE name="test"`,
+}
+queryResult, err := conn.Query(sql, gorqlite.WithConsistency("strong"))
+if err != nil {
+  log.Fatal(err)
+}
+if queryResult.HasError() {
+  log.Fatal(queryResult.GetFirstError())
+}
+log.Info(queryResult.Results[0])
+log.Info(queryResult.Results[1])
+```
 
 ## Testing
 Tests are split into unit tests and system tests.
@@ -61,8 +157,3 @@ make env
 ```
 
 The logs for each node can be found in `tests/log`.
-
-#### Missing Tests
-- [ ] Failover to another node when connected node fails
-- [ ] Failover to another node when leader node is partitioned (so still
-reachable though cannot handle requests)

@@ -1,10 +1,5 @@
 package gorqlite
 
-import (
-	"context"
-	"encoding/json"
-)
-
 type BuildStatus struct {
 	Branch    string `json:"branch,omitempty"`
 	BuildTime string `json:"build_time,omitempty"`
@@ -79,36 +74,4 @@ type Status struct {
 	OS      OSStatus      `json:"os,omitempty"`
 	Runtime RuntimeStatus `json:"runtime,omitempty"`
 	Store   StoreStatus   `json:"store,omitempty"`
-}
-
-type statusAPIClient struct {
-	client apiClient
-}
-
-func newStatusAPIClient(client apiClient) *statusAPIClient {
-	return &statusAPIClient{
-		client: client,
-	}
-}
-
-func (api *statusAPIClient) Status() (Status, error) {
-	return api.StatusWithContext(context.Background())
-}
-
-func (api *statusAPIClient) StatusWithContext(ctx context.Context) (Status, error) {
-	resp, err := api.client.GetWithContext(ctx, "/status")
-	if err != nil {
-		return Status{}, WrapError(err, "failed to fetch status")
-	}
-	defer resp.Body.Close()
-
-	if !isStatusOK(resp.StatusCode) {
-		return Status{}, NewError("failed to fetch status: invalid status code: %d", resp.StatusCode)
-	}
-
-	var status Status
-	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		return Status{}, WrapError(err, "failed to fetch status: invalid response")
-	}
-	return status, nil
 }

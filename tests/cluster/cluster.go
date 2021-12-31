@@ -160,3 +160,18 @@ func (c *Cluster) isHealthy() bool {
 	}
 	return true
 }
+
+func RunDefaultCluster() (*Cluster, error) {
+	cluster, err := OpenCluster(3)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+	if !cluster.WaitForHealthy(ctx) {
+		return nil, gorqlite.NewError("timed out waiting for healthy")
+	}
+
+	return cluster, nil
+}

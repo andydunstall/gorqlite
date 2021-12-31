@@ -9,88 +9,109 @@ import (
 	http "net/http"
 	reflect "reflect"
 
+	gorqlite "github.com/dunstall/gorqlite"
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockAPIClient is a mock of APIClient interface.
-type MockAPIClient struct {
+// MockapiClient is a mock of apiClient interface.
+type MockapiClient struct {
 	ctrl     *gomock.Controller
-	recorder *MockAPIClientMockRecorder
+	recorder *MockapiClientMockRecorder
 }
 
-// MockAPIClientMockRecorder is the mock recorder for MockAPIClient.
-type MockAPIClientMockRecorder struct {
-	mock *MockAPIClient
+// MockapiClientMockRecorder is the mock recorder for MockapiClient.
+type MockapiClientMockRecorder struct {
+	mock *MockapiClient
 }
 
-// NewMockAPIClient creates a new mock instance.
-func NewMockAPIClient(ctrl *gomock.Controller) *MockAPIClient {
-	mock := &MockAPIClient{ctrl: ctrl}
-	mock.recorder = &MockAPIClientMockRecorder{mock}
+// NewMockapiClient creates a new mock instance.
+func NewMockapiClient(ctrl *gomock.Controller) *MockapiClient {
+	mock := &MockapiClient{ctrl: ctrl}
+	mock.recorder = &MockapiClientMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAPIClient) EXPECT() *MockAPIClientMockRecorder {
+func (m *MockapiClient) EXPECT() *MockapiClientMockRecorder {
 	return m.recorder
 }
 
 // Get mocks base method.
-func (m *MockAPIClient) Get(path string) (*http.Response, error) {
+func (m *MockapiClient) Get(path string, opts ...gorqlite.Option) (*http.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", path)
+	varargs := []interface{}{path}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Get", varargs...)
 	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockAPIClientMockRecorder) Get(path interface{}) *gomock.Call {
+func (mr *MockapiClientMockRecorder) Get(path interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAPIClient)(nil).Get), path)
+	varargs := append([]interface{}{path}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockapiClient)(nil).Get), varargs...)
 }
 
 // GetWithContext mocks base method.
-func (m *MockAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
+func (m *MockapiClient) GetWithContext(ctx context.Context, path string, opts ...gorqlite.Option) (*http.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWithContext", ctx, path)
+	varargs := []interface{}{ctx, path}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetWithContext", varargs...)
 	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetWithContext indicates an expected call of GetWithContext.
-func (mr *MockAPIClientMockRecorder) GetWithContext(ctx, path interface{}) *gomock.Call {
+func (mr *MockapiClientMockRecorder) GetWithContext(ctx, path interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithContext", reflect.TypeOf((*MockAPIClient)(nil).GetWithContext), ctx, path)
+	varargs := append([]interface{}{ctx, path}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithContext", reflect.TypeOf((*MockapiClient)(nil).GetWithContext), varargs...)
 }
 
 // Post mocks base method.
-func (m *MockAPIClient) Post(path string, body []byte) (*http.Response, error) {
+func (m *MockapiClient) Post(path string, body []byte, opts ...gorqlite.Option) (*http.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Post", path, body)
+	varargs := []interface{}{path, body}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Post", varargs...)
 	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Post indicates an expected call of Post.
-func (mr *MockAPIClientMockRecorder) Post(path, body interface{}) *gomock.Call {
+func (mr *MockapiClientMockRecorder) Post(path, body interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockAPIClient)(nil).Post), path, body)
+	varargs := append([]interface{}{path, body}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockapiClient)(nil).Post), varargs...)
 }
 
 // PostWithContext mocks base method.
-func (m *MockAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
+func (m *MockapiClient) PostWithContext(ctx context.Context, path string, body []byte, opts ...gorqlite.Option) (*http.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PostWithContext", ctx, path, body)
+	varargs := []interface{}{ctx, path, body}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "PostWithContext", varargs...)
 	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PostWithContext indicates an expected call of PostWithContext.
-func (mr *MockAPIClientMockRecorder) PostWithContext(ctx, path, body interface{}) *gomock.Call {
+func (mr *MockapiClientMockRecorder) PostWithContext(ctx, path, body interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostWithContext", reflect.TypeOf((*MockAPIClient)(nil).PostWithContext), ctx, path, body)
+	varargs := append([]interface{}{ctx, path, body}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostWithContext", reflect.TypeOf((*MockapiClient)(nil).PostWithContext), varargs...)
 }
