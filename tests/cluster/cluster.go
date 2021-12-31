@@ -125,8 +125,8 @@ func (c *Cluster) isHealthy() bool {
 			"node_addr": addr,
 		})
 
-		statusClient := gorqlite.NewStatusAPIClient(gorqlite.NewHTTPAPIClient([]string{addr}))
-		status, err := statusClient.Status()
+		conn := gorqlite.Open([]string{addr})
+		status, err := conn.Status()
 		if err != nil {
 			lg.Debugf("failed to get status: %s", err)
 			return false

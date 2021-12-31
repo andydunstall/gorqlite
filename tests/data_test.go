@@ -25,10 +25,10 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	dataClient := gorqlite.NewDataAPIClient(gorqlite.NewHTTPAPIClient(cluster.Addrs()))
+	conn := gorqlite.Open(cluster.Addrs())
 
 	// Create table.
-	execResults, err := dataClient.Execute([]string{
+	execResults, err := conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, name text)",
 	})
 	require.Nil(err)
@@ -36,7 +36,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	require.Equal(1, len(execResults.Results))
 
 	// Insert one row.
-	execResults, err = dataClient.Execute([]string{
+	execResults, err = conn.Execute([]string{
 		`INSERT INTO foo(name) VALUES("fiona")`,
 	})
 	require.Nil(err)
@@ -45,7 +45,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	require.Equal(int64(1), execResults.Results[0].RowsAffected)
 	require.Equal(int64(1), execResults.Results[0].LastInsertId)
 
-	queryResults, err := dataClient.Query([]string{
+	queryResults, err := conn.Query([]string{
 		`SELECT name FROM foo WHERE name="fiona"`,
 	})
 	require.Nil(err)
@@ -57,7 +57,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	}, queryResults.Results[0])
 
 	// Update one row.
-	execResults, err = dataClient.Execute([]string{
+	execResults, err = conn.Execute([]string{
 		`UPDATE foo SET name="justin" WHERE name="fiona"`,
 	})
 	require.Nil(err)
@@ -65,7 +65,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	require.Equal(1, len(execResults.Results))
 	require.Equal(int64(1), execResults.Results[0].RowsAffected)
 
-	queryResults, err = dataClient.Query([]string{
+	queryResults, err = conn.Query([]string{
 		`SELECT name FROM foo WHERE name="justin"`,
 	})
 	require.Nil(err)
@@ -77,7 +77,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	}, queryResults.Results[0])
 
 	// Delete one row.
-	execResults, err = dataClient.Execute([]string{
+	execResults, err = conn.Execute([]string{
 		`DELETE FROM foo WHERE name="justin"`,
 	})
 	require.Nil(err)
@@ -85,7 +85,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	require.Equal(1, len(execResults.Results))
 	require.Equal(int64(1), execResults.Results[0].RowsAffected)
 
-	queryResults, err = dataClient.Query([]string{
+	queryResults, err = conn.Query([]string{
 		`SELECT COUNT(id) AS idCount FROM foo`,
 	})
 	require.Nil(err)
@@ -103,7 +103,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 		sql = append(sql, fmt.Sprintf(`INSERT INTO foo(name) VALUES("justin-%d")`, i))
 	}
 	// TODO(AD) Missing `transaction: true` option.
-	execResults, err = dataClient.Execute(sql)
+	execResults, err = conn.Execute(sql)
 	require.Nil(err)
 	require.Equal("", execResults.GetFirstError())
 	require.Equal(numRows, len(execResults.Results))
@@ -113,7 +113,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 		require.Equal(int64(i+1), result.LastInsertId)
 	}
 
-	queryResults, err = dataClient.Query([]string{
+	queryResults, err = conn.Query([]string{
 		`SELECT COUNT(*) AS total FROM foo WHERE name like("justin-%")`,
 	})
 	require.Nil(err)
@@ -128,7 +128,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	for i := 0; i < numRows; i++ {
 		sql = append(sql, fmt.Sprintf(`SELECT name FROM foo WHERE name="justin-%d"`, i))
 	}
-	queryResults, err = dataClient.Query(sql)
+	queryResults, err = conn.Query(sql)
 	require.Nil(err)
 	require.Equal("", queryResults.GetFirstError())
 	require.Equal(numRows, len(queryResults.Results))
@@ -141,7 +141,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	}
 
 	// Drop the table.
-	execResults, err = dataClient.Execute([]string{
+	execResults, err = conn.Execute([]string{
 		`DROP TABLE foo`,
 	})
 	require.Nil(err)
@@ -162,13 +162,13 @@ func TestDataAPIClient_QueryInvalidCommand(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	dataClient := gorqlite.NewDataAPIClient(gorqlite.NewHTTPAPIClient(cluster.Addrs()))
-	_, err = dataClient.Execute([]string{
+	conn := gorqlite.Open(cluster.Addrs())
+	_, err = conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, bar text)",
 		"INSERT INTO foo (bar) values ('baz')",
 	})
 	require.Nil(err)
-	result, err := dataClient.Query([]string{
+	result, err := conn.Query([]string{
 		"SELECT * FROM foo",
 		// Table does not exist.
 		"SELECT * FROM bar",
@@ -190,8 +190,8 @@ func TestDataAPIClient_ExecuteInvalidCommand(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	dataClient := gorqlite.NewDataAPIClient(gorqlite.NewHTTPAPIClient(cluster.Addrs()))
-	result, err := dataClient.Execute([]string{
+	conn := gorqlite.Open(cluster.Addrs())
+	result, err := conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, bar text)",
 		// Table does not exist.
 		"INSERT INTO baz (bar) values ('bar')",

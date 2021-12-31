@@ -43,7 +43,7 @@ func TestHTTPAPIClient_DefaultGet(t *testing.T) {
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClient(testAddrs, WithTransport(transport))
+	api := newHTTPAPIClient(testAddrs, WithTransport(transport))
 	resp, err := api.Get("/status")
 	require.Nil(t, err)
 	defer resp.Body.Close()
@@ -74,7 +74,7 @@ func TestHTTPAPIClient_DefaultPost(t *testing.T) {
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClient(testAddrs, WithTransport(transport))
+	api := newHTTPAPIClient(testAddrs, WithTransport(transport))
 	resp, err := api.Post("/status", nil)
 	require.Nil(t, err)
 	defer resp.Body.Close()
@@ -108,7 +108,7 @@ func TestHTTPAPIClient_GetWithHeaders(t *testing.T) {
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClient(
+	api := newHTTPAPIClient(
 		testAddrs,
 		WithHTTPHeaders(headers),
 		WithTransport(transport),
@@ -127,7 +127,7 @@ func TestHTTPAPIClient_RetryFailedRequestsSucceeds(t *testing.T) {
 
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	clock := mock_gorqlite.NewMockClock(ctrl)
-	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
+	api := newHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
 
 	clock.EXPECT().Sleep(100 * time.Millisecond)
 	clock.EXPECT().Sleep(200 * time.Millisecond)
@@ -202,7 +202,7 @@ func TestHTTPAPIClient_RetryFailedRequestsFails(t *testing.T) {
 
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	clock := mock_gorqlite.NewMockClock(ctrl)
-	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
+	api := newHTTPAPIClient(addrs, WithTransport(transport), WithClock(clock))
 
 	for i := 0; i < 6; i++ {
 		d := (100 << i) * time.Millisecond
@@ -264,7 +264,7 @@ func TestHTTPAPIClient_WithActiveHostRoundRobin(t *testing.T) {
 	addrs := []string{"rqlite-0", "rqlite-1", "rqlite-2"}
 
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
-	api := NewHTTPAPIClient(addrs, WithTransport(transport))
+	api := newHTTPAPIClient(addrs, WithTransport(transport))
 
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 3; j++ {
@@ -302,7 +302,7 @@ func TestHTTPAPIClient_WithoutActiveHostRoundRobin(t *testing.T) {
 	addrs := []string{"rqlite", "rqlite-0", "rqlite-1"}
 
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
-	api := NewHTTPAPIClient(addrs, WithTransport(transport), WithActiveHostRoundRobin(false))
+	api := newHTTPAPIClient(addrs, WithTransport(transport), WithActiveHostRoundRobin(false))
 
 	for i := 0; i < 4; i++ {
 		expectedReq := &http.Request{
@@ -361,7 +361,7 @@ func TestHTTPAPIClient_WithRedirect(t *testing.T) {
 		transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(resp, nil)
 	}
 
-	api := NewHTTPAPIClient(testAddrs, WithRedirectAttempts(3), WithTransport(transport))
+	api := newHTTPAPIClient(testAddrs, WithRedirectAttempts(3), WithTransport(transport))
 	resp, err := api.Get("/status-0")
 	require.Error(t, err)
 	if resp != nil {
@@ -396,7 +396,7 @@ func TestHTTPAPIClient_NoRedirects(t *testing.T) {
 	transport := mock_gorqlite.NewMockRoundTripper(ctrl)
 	transport.EXPECT().RoundTrip(newHTTPReqEqMatcher(expectedReq)).Return(expectedResp, nil)
 
-	api := NewHTTPAPIClient(testAddrs, WithTransport(transport), WithRedirectAttempts(0))
+	api := newHTTPAPIClient(testAddrs, WithTransport(transport), WithRedirectAttempts(0))
 	resp, err := api.Get("/status")
 	require.Error(t, err)
 	if resp != nil {

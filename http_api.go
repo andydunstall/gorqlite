@@ -26,65 +26,15 @@ func (c *SystemClock) Sleep(d time.Duration) {
 	<-time.After(d)
 }
 
-type HTTPConfig struct {
-	ActiveHostRoundRobin bool
-	HTTPHeaders          http.Header
-	Transport            http.RoundTripper
-	RedirectAttempts     int
-	clock                Clock
-}
-
-type HTTPOption func(conf *HTTPConfig)
-
-func DefaultHTTPConfig() *HTTPConfig {
-	return &HTTPConfig{
-		ActiveHostRoundRobin: true,
-		HTTPHeaders:          make(http.Header),
-		Transport:            http.DefaultTransport,
-		RedirectAttempts:     10,
-		clock:                &SystemClock{},
-	}
-}
-
-func WithActiveHostRoundRobin(roundRobin bool) HTTPOption {
-	return func(conf *HTTPConfig) {
-		conf.ActiveHostRoundRobin = roundRobin
-	}
-}
-
-func WithHTTPHeaders(headers http.Header) HTTPOption {
-	return func(conf *HTTPConfig) {
-		conf.HTTPHeaders = headers
-	}
-}
-
-func WithTransport(transport http.RoundTripper) HTTPOption {
-	return func(conf *HTTPConfig) {
-		conf.Transport = transport
-	}
-}
-
-func WithRedirectAttempts(redirectAttempts int) HTTPOption {
-	return func(conf *HTTPConfig) {
-		conf.RedirectAttempts = redirectAttempts
-	}
-}
-
-func WithClock(clock Clock) HTTPOption {
-	return func(conf *HTTPConfig) {
-		conf.clock = clock
-	}
-}
-
-type HTTPAPIClient struct {
+type httpAPIClient struct {
 	hosts           []string
 	activeHostIndex int
 	client          *http.Client
-	conf            *HTTPConfig
+	conf            *Config
 }
 
-func NewHTTPAPIClient(hosts []string, opts ...HTTPOption) *HTTPAPIClient {
-	conf := DefaultHTTPConfig()
+func newHTTPAPIClient(hosts []string, opts ...Option) *httpAPIClient {
+	conf := DefaultConfig()
 	for _, opt := range opts {
 		opt(conf)
 	}
@@ -94,7 +44,7 @@ func NewHTTPAPIClient(hosts []string, opts ...HTTPOption) *HTTPAPIClient {
 		},
 		Transport: conf.Transport,
 	}
-	return &HTTPAPIClient{
+	return &httpAPIClient{
 		hosts:           hosts,
 		activeHostIndex: 0,
 		client:          client,
@@ -102,23 +52,23 @@ func NewHTTPAPIClient(hosts []string, opts ...HTTPOption) *HTTPAPIClient {
 	}
 }
 
-func (api *HTTPAPIClient) Get(path string) (*http.Response, error) {
+func (api *httpAPIClient) Get(path string) (*http.Response, error) {
 	return api.fetch(context.Background(), http.MethodGet, path, nil)
 }
 
-func (api *HTTPAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
+func (api *httpAPIClient) GetWithContext(ctx context.Context, path string) (*http.Response, error) {
 	return api.fetch(ctx, http.MethodGet, path, nil)
 }
 
-func (api *HTTPAPIClient) Post(path string, body []byte) (*http.Response, error) {
+func (api *httpAPIClient) Post(path string, body []byte) (*http.Response, error) {
 	return api.fetch(context.Background(), http.MethodPost, path, body)
 }
 
-func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
+func (api *httpAPIClient) PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error) {
 	return api.fetch(ctx, http.MethodPost, path, body)
 }
 
-func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
 	defer api.rotateActiveHost()
 
 	var reqBody io.Reader
@@ -186,14 +136,14 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 	}
 }
 
-func (api *HTTPAPIClient) activeHost() string {
+func (api *httpAPIClient) activeHost() string {
 	if 0 <= api.activeHostIndex && api.activeHostIndex < len(api.hosts) {
 		return api.hosts[api.activeHostIndex]
 	}
 	return ""
 }
 
-func (api *HTTPAPIClient) rotateActiveHost() {
+func (api *httpAPIClient) rotateActiveHost() {
 	if api.conf.ActiveHostRoundRobin {
 		api.activeHostIndex = ((api.activeHostIndex + 1) % len(api.hosts))
 	}

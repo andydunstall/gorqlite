@@ -51,7 +51,7 @@ func TestDataAPIClient_QueryOK(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	result, err := dataClient.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
@@ -121,7 +121,7 @@ func TestDataAPIClient_QueryNullResults(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	result, err := dataClient.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
@@ -168,7 +168,7 @@ func TestDataAPIClient_QueryErrorResults(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["invalid"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	result, err := dataClient.Query([]string{"invalid"})
 	require.Nil(t, err)
 
@@ -195,7 +195,7 @@ func TestDataAPIClient_QueryBadStatus(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["abc","123"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	_, err := dataClient.Query([]string{"abc", "123"})
 	require.Error(t, err)
 }
@@ -207,7 +207,7 @@ func TestDataAPIClient_QueryNetworkError(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["abc","123"]`)).Return(nil, fmt.Errorf("network err"))
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	_, err := dataClient.Query([]string{"abc", "123"})
 	require.Error(t, err)
 }
@@ -238,7 +238,7 @@ func TestDataAPIClient_ExecuteOK(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	result, err := dataClient.Execute([]string{"abc", "123"})
 	require.Nil(t, err)
 
@@ -285,7 +285,7 @@ func TestDataAPIClient_ExecuteErrorResults(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	result, err := dataClient.Execute([]string{"abc", "123"})
 	require.Nil(t, err)
 
@@ -318,7 +318,7 @@ func TestDataAPIClient_ExecuteBadStatus(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	_, err := dataClient.Execute([]string{"abc", "123"})
 	require.Error(t, err)
 }
@@ -330,7 +330,7 @@ func TestDataAPIClient_ExecuteNetworkError(t *testing.T) {
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(nil, fmt.Errorf("network err"))
 
-	dataClient := NewDataAPIClient(apiClient)
+	dataClient := newDataAPIClient(apiClient)
 	_, err := dataClient.Execute([]string{"abc", "123"})
 	require.Error(t, err)
 }

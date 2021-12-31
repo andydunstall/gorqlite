@@ -1,6 +1,30 @@
 # gorqlite
 A client library for [rqlite](https://github.com/rqlite/rqlite) based on [rqlite-js](https://github.com/rqlite/rqlite-js).
 
+## Examples
+```go
+conn := gorqlite.Open(addrs, WithConsistencyLevel("strong"))
+
+status, err := conn.StatusWithContext(ctx)
+if err != nil {
+  // ...
+}
+fmt.Println("status", status)
+
+execResults, err := conn.Execute(sqlStatements)
+if err != nil {
+  // ...
+}
+for _, res := range execResults.Results {
+  fmt.Println("rows affected", res.RowsAffected)
+}
+
+queryResults, err := conn.ExecuteResult(sqlStatements)
+if err != nil {
+  // ...
+}
+```
+
 ## TODO
 - [ ] Run go.dev/doc/diagnostic
   * Also setup a long running test that just makes random queries for a few

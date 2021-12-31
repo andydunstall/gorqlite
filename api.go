@@ -7,13 +7,13 @@ import (
 	"net/http"
 )
 
-type APIClient interface {
+type apiClient interface {
 	Get(path string) (*http.Response, error)
 	GetWithContext(ctx context.Context, path string) (*http.Response, error)
 	Post(path string, body []byte) (*http.Response, error)
 	PostWithContext(ctx context.Context, path string, body []byte) (*http.Response, error)
 }
 
-func IsStatusOK(statusCode int) bool {
+func isStatusOK(statusCode int) bool {
 	return statusCode >= 200 && statusCode <= 299
 }

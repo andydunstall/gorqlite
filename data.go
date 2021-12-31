@@ -56,21 +56,21 @@ func (r *ExecuteResponse) GetFirstError() string {
 	return ""
 }
 
-type DataAPIClient struct {
-	client APIClient
+type dataAPIClient struct {
+	client apiClient
 }
 
-func NewDataAPIClient(client APIClient) *DataAPIClient {
-	return &DataAPIClient{
+func newDataAPIClient(client apiClient) *dataAPIClient {
+	return &dataAPIClient{
 		client: client,
 	}
 }
 
-func (api *DataAPIClient) Query(sql []string) (QueryResponse, error) {
+func (api *dataAPIClient) Query(sql []string) (QueryResponse, error) {
 	return api.QueryWithContext(context.Background(), sql)
 }
 
-func (api *DataAPIClient) QueryWithContext(ctx context.Context, sql []string) (QueryResponse, error) {
+func (api *dataAPIClient) QueryWithContext(ctx context.Context, sql []string) (QueryResponse, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
 		return QueryResponse{}, WrapError(err, "query failed: failed to marshal query")
@@ -81,7 +81,7 @@ func (api *DataAPIClient) QueryWithContext(ctx context.Context, sql []string) (Q
 	}
 	defer resp.Body.Close()
 
-	if !IsStatusOK(resp.StatusCode) {
+	if !isStatusOK(resp.StatusCode) {
 		return QueryResponse{}, NewError("query failed: invalid status code: %d", resp.StatusCode)
 	}
 
@@ -93,11 +93,11 @@ func (api *DataAPIClient) QueryWithContext(ctx context.Context, sql []string) (Q
 	return results, nil
 }
 
-func (api *DataAPIClient) Execute(sql []string) (ExecuteResponse, error) {
+func (api *dataAPIClient) Execute(sql []string) (ExecuteResponse, error) {
 	return api.ExecuteWithContext(context.Background(), sql)
 }
 
-func (api *DataAPIClient) ExecuteWithContext(ctx context.Context, sql []string) (ExecuteResponse, error) {
+func (api *dataAPIClient) ExecuteWithContext(ctx context.Context, sql []string) (ExecuteResponse, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
 		return ExecuteResponse{}, WrapError(err, "execute failed: failed to marshal query")
@@ -108,7 +108,7 @@ func (api *DataAPIClient) ExecuteWithContext(ctx context.Context, sql []string) 
 	}
 	defer resp.Body.Close()
 
-	if !IsStatusOK(resp.StatusCode) {
+	if !isStatusOK(resp.StatusCode) {
 		return ExecuteResponse{}, NewError("execute failed: invalid status code: %d", resp.StatusCode)
 	}
 

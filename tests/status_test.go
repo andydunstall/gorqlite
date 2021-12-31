@@ -36,8 +36,8 @@ func TestStatusAPIClient_PeerStatus(t *testing.T) {
 	}
 
 	for id, addr := range cluster.NodeAddrs() {
-		statusClient := gorqlite.NewStatusAPIClient(gorqlite.NewHTTPAPIClient([]string{addr}))
-		status, err := statusClient.Status()
+		conn := gorqlite.Open([]string{addr})
+		status, err := conn.Status()
 		require.Nil(err)
 
 		require.Equal(fmt.Sprintf("%d", id), status.Store.NodeID)

@@ -81,28 +81,28 @@ type Status struct {
 	Store   StoreStatus   `json:"store,omitempty"`
 }
 
-type StatusAPIClient struct {
-	client APIClient
+type statusAPIClient struct {
+	client apiClient
 }
 
-func NewStatusAPIClient(client APIClient) *StatusAPIClient {
-	return &StatusAPIClient{
+func newStatusAPIClient(client apiClient) *statusAPIClient {
+	return &statusAPIClient{
 		client: client,
 	}
 }
 
-func (api *StatusAPIClient) Status() (Status, error) {
+func (api *statusAPIClient) Status() (Status, error) {
 	return api.StatusWithContext(context.Background())
 }
 
-func (api *StatusAPIClient) StatusWithContext(ctx context.Context) (Status, error) {
+func (api *statusAPIClient) StatusWithContext(ctx context.Context) (Status, error) {
 	resp, err := api.client.GetWithContext(ctx, "/status")
 	if err != nil {
 		return Status{}, WrapError(err, "failed to fetch status")
 	}
 	defer resp.Body.Close()
 
-	if !IsStatusOK(resp.StatusCode) {
+	if !isStatusOK(resp.StatusCode) {
 		return Status{}, NewError("failed to fetch status: invalid status code: %d", resp.StatusCode)
 	}
 
