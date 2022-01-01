@@ -249,7 +249,6 @@ func TestGorqlite_QueryOK(t *testing.T) {
 	expectedResult := gorqlite.QueryResults{
 		{
 			Columns: []string{"id", "name"},
-			Types:   []string{"integer", "text"},
 			Values: [][]interface{}{
 				{
 					float64(1), "foo",
@@ -261,6 +260,20 @@ func TestGorqlite_QueryOK(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedResult, result)
+
+	row, ok := result[0].Next()
+	require.True(t, ok)
+	var id int
+	var name string
+	require.Nil(t, row.Scan(&id, &name))
+	require.Equal(t, 1, id)
+	require.Equal(t, "foo", name)
+
+	row, ok = result[0].Next()
+	require.True(t, ok)
+	require.Nil(t, row.Scan(&id, &name))
+	require.Equal(t, 2, id)
+	require.Equal(t, "bar", name)
 }
 
 func TestGorqlite_QueryOneOK(t *testing.T) {
@@ -306,7 +319,6 @@ func TestGorqlite_QueryOneOK(t *testing.T) {
 
 	expectedResult := gorqlite.QueryResult{
 		Columns: []string{"id", "name"},
-		Types:   []string{"integer", "text"},
 		Values: [][]interface{}{
 			{
 				float64(1), "foo",
@@ -370,7 +382,6 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 	expectedResult := gorqlite.QueryResults{
 		{
 			Columns: []string{"id", "name"},
-			Types:   []string{"number", "text"},
 			Values: [][]interface{}{
 				{
 					nil, "Hulk",
@@ -379,7 +390,6 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 		},
 		{
 			Columns: []string{"id", "name"},
-			Types:   []string{"number", "text"},
 		},
 	}
 	require.Equal(t, expectedResult, result)

@@ -28,73 +28,66 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	conn := gorqlite.Connect(cluster.Addrs())
 
 	// Create table.
-	execResults, err := conn.Execute([]string{
+	execResult, err := conn.ExecuteOne(
 		"CREATE TABLE foo (id integer not null primary key, name text)",
-	})
+	)
 	require.Nil(err)
-	require.Equal("", execResults.GetFirstError())
-	require.Equal(1, len(execResults))
+	require.Equal("", execResult.Error)
 
 	// Insert one row.
-	execResults, err = conn.Execute([]string{
+	execResult, err = conn.ExecuteOne(
 		`INSERT INTO foo(name) VALUES("fiona")`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", execResults.GetFirstError())
-	require.Equal(1, len(execResults))
-	require.Equal(int64(1), execResults[0].RowsAffected)
-	require.Equal(int64(1), execResults[0].LastInsertId)
+	require.Equal("", execResult.Error)
+	require.Equal(int64(1), execResult.RowsAffected)
+	require.Equal(int64(1), execResult.LastInsertId)
 
-	queryResults, err := conn.Query([]string{
+	queryResult, err := conn.QueryOne(
 		`SELECT name FROM foo WHERE name="fiona"`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", queryResults.GetFirstError())
+	require.Equal("", queryResult.Error)
 	require.Equal(gorqlite.QueryResult{
 		Columns: []string{"name"},
-		Types:   []string{"text"},
 		Values:  [][]interface{}{{"fiona"}},
-	}, queryResults[0])
+	}, queryResult)
 
 	// Update one row.
-	execResults, err = conn.Execute([]string{
+	execResult, err = conn.ExecuteOne(
 		`UPDATE foo SET name="justin" WHERE name="fiona"`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", execResults.GetFirstError())
-	require.Equal(1, len(execResults))
-	require.Equal(int64(1), execResults[0].RowsAffected)
+	require.Equal("", execResult.Error)
+	require.Equal(int64(1), execResult.RowsAffected)
 
-	queryResults, err = conn.Query([]string{
+	queryResult, err = conn.QueryOne(
 		`SELECT name FROM foo WHERE name="justin"`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", queryResults.GetFirstError())
+	require.Equal("", queryResult.Error)
 	require.Equal(gorqlite.QueryResult{
 		Columns: []string{"name"},
-		Types:   []string{"text"},
 		Values:  [][]interface{}{{"justin"}},
-	}, queryResults[0])
+	}, queryResult)
 
 	// Delete one row.
-	execResults, err = conn.Execute([]string{
+	execResult, err = conn.ExecuteOne(
 		`DELETE FROM foo WHERE name="justin"`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", execResults.GetFirstError())
-	require.Equal(1, len(execResults))
-	require.Equal(int64(1), execResults[0].RowsAffected)
+	require.Equal("", execResult.Error)
+	require.Equal(int64(1), execResult.RowsAffected)
 
-	queryResults, err = conn.Query([]string{
+	queryResult, err = conn.QueryOne(
 		`SELECT COUNT(id) AS idCount FROM foo`,
-	})
+	)
 	require.Nil(err)
-	require.Equal("", queryResults.GetFirstError())
+	require.Equal("", queryResult.Error)
 	require.Equal(gorqlite.QueryResult{
 		Columns: []string{"idCount"},
-		Types:   []string{""},
 		Values:  [][]interface{}{{float64(0)}},
-	}, queryResults[0])
+	}, queryResult)
 
 	// Insert multiple rows.
 	sql := []string{}
@@ -102,7 +95,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 	for i := 0; i < numRows; i++ {
 		sql = append(sql, fmt.Sprintf(`INSERT INTO foo(name) VALUES("justin-%d")`, i))
 	}
-	execResults, err = conn.Execute(sql, gorqlite.WithTransaction(true))
+	execResults, err := conn.Execute(sql, gorqlite.WithTransaction(true))
 	require.Nil(err)
 	require.Equal("", execResults.GetFirstError())
 	require.Equal(numRows, len(execResults))
@@ -112,41 +105,50 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 		require.Equal(int64(i+1), result.LastInsertId)
 	}
 
-	queryResults, err = conn.Query([]string{
+	queryResult, err = conn.QueryOne(
 		`SELECT COUNT(*) AS total FROM foo WHERE name like("justin-%")`,
-	}, gorqlite.WithConsistency("strong"))
+		gorqlite.WithConsistency("strong"),
+	)
 	require.Nil(err)
-	require.Equal("", queryResults.GetFirstError())
+	require.Equal("", queryResult.Error)
 	require.Equal(gorqlite.QueryResult{
 		Columns: []string{"total"},
-		Types:   []string{""},
 		Values:  [][]interface{}{{float64(numRows)}},
-	}, queryResults[0])
+	}, queryResult)
 
 	sql = []string{}
 	for i := 0; i < numRows; i++ {
 		sql = append(sql, fmt.Sprintf(`SELECT name FROM foo WHERE name="justin-%d"`, i))
 	}
-	queryResults, err = conn.Query(sql)
+	queryResults, err := conn.Query(sql)
 	require.Nil(err)
 	require.Equal("", queryResults.GetFirstError())
 	require.Equal(numRows, len(queryResults))
 	for i, result := range queryResults {
 		require.Equal(gorqlite.QueryResult{
 			Columns: []string{"name"},
-			Types:   []string{"text"},
 			Values:  [][]interface{}{{fmt.Sprintf("justin-%d", i)}},
 		}, result)
 	}
 
-	// Drop the table.
-	execResults, err = conn.Execute([]string{
-		`DROP TABLE foo`,
-	})
+	// TODO
+	queryResult, err = conn.QueryOne(
+		`SELECT * FROM foo WHERE name like("justin-%")`,
+	)
 	require.Nil(err)
-	require.Equal("", execResults.GetFirstError())
-	require.Equal(1, len(execResults))
-	require.Equal(int64(1), execResults[0].RowsAffected)
+	for {
+		row, ok := queryResult.Next()
+		if !ok {
+			break
+		}
+		fmt.Println(row)
+	}
+
+	// Drop the table.
+	execResult, err = conn.ExecuteOne(`DROP TABLE foo`)
+	require.Nil(err)
+	require.Equal("", execResult.Error)
+	require.Equal(int64(1), execResult.RowsAffected)
 }
 
 func TestDataAPIClient_QueryInvalidCommand(t *testing.T) {
