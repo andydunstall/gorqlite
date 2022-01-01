@@ -5,6 +5,11 @@ all: build
 build:
 	go build ./...
 
+.PHONY: deps
+deps:
+	go get -t -d ./...
+	go install github.com/golang/mock/mockgen@v1.6.0
+
 # Runs all unit tests.
 .PHONY: test
 test:

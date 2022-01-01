@@ -1,4 +1,6 @@
 # gorqlite
+![build status](https://app.travis-ci.com/dunstall/gorqlite.svg?branch=main)
+
 A client library for [rqlite](https://github.com/rqlite/rqlite), the
 lightweight, distributed database built on SQLite. This package is designed to
 provide a Go interface for the RQLite API endpoints.

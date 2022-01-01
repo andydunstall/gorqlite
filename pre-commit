@@ -1,0 +1,38 @@
+#!/bin/sh
+
+main() {
+  run_install || exit 1
+  run_build || exit 1
+  run_unit_tests || exit 1
+  run_lint || exit 1
+  run_update || exit 1
+  run_check_unchanged || exit 1
+}
+
+run_install() {
+  make deps
+}
+
+run_build() {
+  make build
+}
+
+run_unit_tests() {
+  make test
+}
+
+run_lint() {
+  make lint
+}
+
+run_update() {
+  go mod tidy
+  make fmt
+  make generate
+}
+
+run_check_unchanged() {
+  git diff --quiet
+}
+
+main
