@@ -1,22 +1,16 @@
 package gorqlite
 
-type QueryRows struct {
+type QueryResult struct {
 	Columns []string        `json:"columns,omitempty"`
 	Types   []string        `json:"types,omitempty"`
 	Values  [][]interface{} `json:"values,omitempty"`
 	Error   string          `json:"error,omitempty"`
 }
 
-type QueryResponse struct {
-	Results []QueryRows `json:"results,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
+type QueryResults []QueryResult
 
-func (r *QueryResponse) GetFirstError() string {
-	if r.Error != "" {
-		return r.Error
-	}
-	for _, row := range r.Results {
+func (r QueryResults) GetFirstError() string {
+	for _, row := range r {
 		if row.Error != "" {
 			return row.Error
 		}
@@ -24,7 +18,7 @@ func (r *QueryResponse) GetFirstError() string {
 	return ""
 }
 
-func (r *QueryResponse) HasError() bool {
+func (r QueryResults) HasError() bool {
 	return r.GetFirstError() != ""
 }
 
@@ -34,16 +28,10 @@ type ExecuteResult struct {
 	Error        string `json:"error,omitempty"`
 }
 
-type ExecuteResponse struct {
-	Results []ExecuteResult `json:"results,omitempty"`
-	Error   string          `json:"error,omitempty"`
-}
+type ExecuteResults []ExecuteResult
 
-func (r *ExecuteResponse) GetFirstError() string {
-	if r.Error != "" {
-		return r.Error
-	}
-	for _, result := range r.Results {
+func (r ExecuteResults) GetFirstError() string {
+	for _, result := range r {
 		if result.Error != "" {
 			return result.Error
 		}
@@ -51,6 +39,6 @@ func (r *ExecuteResponse) GetFirstError() string {
 	return ""
 }
 
-func (r *ExecuteResponse) HasError() bool {
+func (r ExecuteResults) HasError() bool {
 	return r.GetFirstError() != ""
 }

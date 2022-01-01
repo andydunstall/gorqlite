@@ -37,7 +37,7 @@ func main() {
 	if execResult.HasError() {
 		log.Fatal(execResult.GetFirstError())
 	}
-	id := execResult.Results[0].LastInsertId
+	id := execResult[0].LastInsertId
 	log.Infof("id of the inserted row: %d", id)
 
 	queryResult, err := conn.Query([]string{
@@ -49,7 +49,7 @@ func main() {
 	if queryResult.HasError() {
 		log.Fatal(queryResult.GetFirstError())
 	}
-	log.Info(queryResult.Results[0])
+	log.Info(queryResult[0])
 
 	execResult, err = conn.Execute([]string{
 		`UPDATE foo SET name="justin" WHERE name="fiona"`,
@@ -60,7 +60,7 @@ func main() {
 	if execResult.HasError() {
 		log.Fatal(execResult.GetFirstError())
 	}
-	rowsAffected := execResult.Results[0].RowsAffected
+	rowsAffected := execResult[0].RowsAffected
 	log.Infof("rows affected: %d", rowsAffected)
 
 	queryResult, err = conn.Query([]string{
@@ -72,5 +72,5 @@ func main() {
 	if queryResult.HasError() {
 		log.Fatal(queryResult.GetFirstError())
 	}
-	log.Info(queryResult.Results[0])
+	log.Info(queryResult[0])
 }

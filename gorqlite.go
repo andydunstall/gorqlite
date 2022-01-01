@@ -31,34 +31,47 @@ func OpenWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
 	}
 }
 
+type queryResponse struct {
+	Results []QueryResult `json:"results,omitempty"`
+	Error   string        `json:"error,omitempty"`
+}
+
 // Query runs the given query `sql` statements to rqlite and returns the
 // results.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#querying-data.
-func (g *Gorqlite) Query(sql []string, opts ...Option) (QueryResponse, error) {
+func (g *Gorqlite) Query(sql []string, opts ...Option) (QueryResults, error) {
 	return g.QueryWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...Option) (QueryResponse, error) {
+func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...Option) (QueryResults, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
-		return QueryResponse{}, wrapError(err, "query failed: failed to marshal query")
+		return nil, wrapError(err, "query failed: failed to marshal query")
 	}
 	resp, err := g.apiClient.PostWithContext(ctx, "/db/query", body, opts...)
 	if err != nil {
-		return QueryResponse{}, wrapError(err, "query failed: request failed")
+		return nil, wrapError(err, "query failed: request failed")
 	}
 	defer resp.Body.Close()
 
 	if !isStatusOK(resp.StatusCode) {
-		return QueryResponse{}, newError("query failed: invalid status code: %d", resp.StatusCode)
+		return nil, newError("query failed: invalid status code: %d", resp.StatusCode)
 	}
 
-	var results QueryResponse
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return QueryResponse{}, wrapError(err, "query failed: invalid response")
+	var queryResp queryResponse
+	if err := json.NewDecoder(resp.Body).Decode(&queryResp); err != nil {
+		return nil, wrapError(err, "query failed: invalid response")
+	}
+	if queryResp.Error != "" {
+		return nil, newError("query failed: %s", queryResp.Error)
 	}
 
-	return results, nil
+	return queryResp.Results, nil
+}
+
+type executeResponse struct {
+	Results []ExecuteResult `json:"results,omitempty"`
+	Error   string          `json:"error,omitempty"`
 }
 
 // Execute writes the given `sql` statements to rqlite and returns the execute
@@ -67,31 +80,34 @@ func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...O
 //
 // To enable transactions use `WithTransaction(true)` option.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#transactions.
-func (g *Gorqlite) Execute(sql []string, opts ...Option) (ExecuteResponse, error) {
+func (g *Gorqlite) Execute(sql []string, opts ...Option) (ExecuteResults, error) {
 	return g.ExecuteWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ...Option) (ExecuteResponse, error) {
+func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ...Option) (ExecuteResults, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
-		return ExecuteResponse{}, wrapError(err, "execute failed: failed to marshal query")
+		return nil, wrapError(err, "execute failed: failed to marshal query")
 	}
 	resp, err := g.apiClient.PostWithContext(ctx, "/db/execute", body, opts...)
 	if err != nil {
-		return ExecuteResponse{}, wrapError(err, "execute failed: request failed")
+		return nil, wrapError(err, "execute failed: request failed")
 	}
 	defer resp.Body.Close()
 
 	if !isStatusOK(resp.StatusCode) {
-		return ExecuteResponse{}, newError("execute failed: invalid status code: %d", resp.StatusCode)
+		return nil, newError("execute failed: invalid status code: %d", resp.StatusCode)
 	}
 
-	var results ExecuteResponse
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return ExecuteResponse{}, wrapError(err, "execute failed: invalid response")
+	var executeResp executeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&executeResp); err != nil {
+		return nil, wrapError(err, "execute failed: invalid response")
+	}
+	if executeResp.Error != "" {
+		return nil, newError("execute failed: %s", executeResp.Error)
 	}
 
-	return results, nil
+	return executeResp.Results, nil
 }
 
 // Status queries the rqlite status API.

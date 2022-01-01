@@ -37,6 +37,6 @@ func main() {
 	if execResult.HasError() {
 		log.Fatal(execResult.GetFirstError())
 	}
-	log.Infof("id for first insert: %d", execResult.Results[0].LastInsertId)
-	log.Infof("id for second insert: %d", execResult.Results[1].LastInsertId)
+	log.Infof("id for first insert: %d", execResult[0].LastInsertId)
+	log.Infof("id for second insert: %d", execResult[1].LastInsertId)
 }

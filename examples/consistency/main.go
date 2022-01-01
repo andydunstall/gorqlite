@@ -37,8 +37,8 @@ func main() {
 	if execResult.HasError() {
 		log.Fatal(execResult.GetFirstError())
 	}
-	log.Infof("id for first insert: %d", execResult.Results[0].LastInsertId)
-	log.Infof("id for second insert: %d", execResult.Results[1].LastInsertId)
+	log.Infof("id for first insert: %d", execResult[0].LastInsertId)
+	log.Infof("id for second insert: %d", execResult[1].LastInsertId)
 
 	sql = []string{
 		`SELECT name FROM foo WHERE id="1"`,
@@ -51,6 +51,6 @@ func main() {
 	if queryResult.HasError() {
 		log.Fatal(queryResult.GetFirstError())
 	}
-	log.Info(queryResult.Results[0])
-	log.Info(queryResult.Results[1])
+	log.Info(queryResult[0])
+	log.Info(queryResult[1])
 }

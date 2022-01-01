@@ -246,22 +246,19 @@ func TestGorqlite_QueryOK(t *testing.T) {
 	result, err := dataClient.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
-	expectedResult := gorqlite.QueryResponse{
-		Results: []gorqlite.QueryRows{
-			{
-				Columns: []string{"id", "name"},
-				Types:   []string{"integer", "text"},
-				Values: [][]interface{}{
-					{
-						float64(1), "foo",
-					},
-					{
-						float64(2), "bar",
-					},
+	expectedResult := gorqlite.QueryResults{
+		{
+			Columns: []string{"id", "name"},
+			Types:   []string{"integer", "text"},
+			Values: [][]interface{}{
+				{
+					float64(1), "foo",
+				},
+				{
+					float64(2), "bar",
 				},
 			},
 		},
-		Error: "",
 	}
 	require.Equal(t, expectedResult, result)
 }
@@ -314,23 +311,20 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 	result, err := dataClient.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
-	expectedResult := gorqlite.QueryResponse{
-		Results: []gorqlite.QueryRows{
-			{
-				Columns: []string{"id", "name"},
-				Types:   []string{"number", "text"},
-				Values: [][]interface{}{
-					{
-						nil, "Hulk",
-					},
+	expectedResult := gorqlite.QueryResults{
+		{
+			Columns: []string{"id", "name"},
+			Types:   []string{"number", "text"},
+			Values: [][]interface{}{
+				{
+					nil, "Hulk",
 				},
 			},
-			{
-				Columns: []string{"id", "name"},
-				Types:   []string{"number", "text"},
-			},
 		},
-		Error: "",
+		{
+			Columns: []string{"id", "name"},
+			Types:   []string{"number", "text"},
+		},
 	}
 	require.Equal(t, expectedResult, result)
 }
@@ -358,11 +352,9 @@ func TestGorqlite_QueryErrorResults(t *testing.T) {
 	result, err := dataClient.Query([]string{"invalid"})
 	require.Nil(t, err)
 
-	expectedResult := gorqlite.QueryResponse{
-		Results: []gorqlite.QueryRows{
-			{
-				Error: "near \"invalid\": syntax error",
-			},
+	expectedResult := gorqlite.QueryResults{
+		{
+			Error: "near \"invalid\": syntax error",
 		},
 	}
 	require.Equal(t, expectedResult, result)
@@ -427,18 +419,15 @@ func TestGorqlite_ExecuteOK(t *testing.T) {
 	result, err := dataClient.Execute([]string{"abc", "123"})
 	require.Nil(t, err)
 
-	expectedResult := gorqlite.ExecuteResponse{
-		Results: []gorqlite.ExecuteResult{
-			{
-				LastInsertId: 1,
-				RowsAffected: 1,
-			},
-			{
-				LastInsertId: 2,
-				RowsAffected: 1,
-			},
+	expectedResult := gorqlite.ExecuteResults{
+		{
+			LastInsertId: 1,
+			RowsAffected: 1,
 		},
-		Error: "",
+		{
+			LastInsertId: 2,
+			RowsAffected: 1,
+		},
 	}
 	require.Equal(t, expectedResult, result)
 }
@@ -471,17 +460,14 @@ func TestGorqlite_ExecuteErrorResults(t *testing.T) {
 	result, err := dataClient.Execute([]string{"abc", "123"})
 	require.Nil(t, err)
 
-	expectedResult := gorqlite.ExecuteResponse{
-		Results: []gorqlite.ExecuteResult{
-			{
-				LastInsertId: 1,
-				RowsAffected: 1,
-			},
-			{
-				Error: "invalid request",
-			},
+	expectedResult := gorqlite.ExecuteResults{
+		{
+			LastInsertId: 1,
+			RowsAffected: 1,
 		},
-		Error: "",
+		{
+			Error: "invalid request",
+		},
 	}
 	require.Equal(t, expectedResult, result)
 	require.Equal(t, "invalid request", result.GetFirstError())
