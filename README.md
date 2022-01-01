@@ -1,5 +1,6 @@
 # gorqlite
 ![build status](https://app.travis-ci.com/dunstall/gorqlite.svg?branch=main)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/dunstall/gorqlite)](https://pkg.go.dev/github.com/dunstall/gorqlite?tab=doc)
 
 A client library for [rqlite](https://github.com/rqlite/rqlite), the
 lightweight, distributed database built on SQLite. This package is designed to
