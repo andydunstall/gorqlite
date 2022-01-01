@@ -118,7 +118,7 @@ func (c *Cluster) Close() error {
 }
 
 func (c *Cluster) isHealthy() bool {
-	var knownLeader gorqlite.Leader
+	var knownLeader gorqlite.LeaderInfo
 	for id, addr := range c.NodeAddrs() {
 		lg := log.WithFields(log.Fields{
 			"node_id":   id,
@@ -170,7 +170,7 @@ func RunDefaultCluster() (*Cluster, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 	if !cluster.WaitForHealthy(ctx) {
-		return nil, gorqlite.NewError("timed out waiting for healthy")
+		return nil, newError("timed out waiting for healthy")
 	}
 
 	return cluster, nil

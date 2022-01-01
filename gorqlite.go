@@ -47,21 +47,21 @@ func (g *Gorqlite) Query(sql []string, opts ...Option) (QueryResponse, error) {
 func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...Option) (QueryResponse, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
-		return QueryResponse{}, WrapError(err, "query failed: failed to marshal query")
+		return QueryResponse{}, wrapError(err, "query failed: failed to marshal query")
 	}
 	resp, err := g.apiClient.PostWithContext(ctx, "/db/query", body, opts...)
 	if err != nil {
-		return QueryResponse{}, WrapError(err, "query failed: request failed")
+		return QueryResponse{}, wrapError(err, "query failed: request failed")
 	}
 	defer resp.Body.Close()
 
 	if !isStatusOK(resp.StatusCode) {
-		return QueryResponse{}, NewError("query failed: invalid status code: %d", resp.StatusCode)
+		return QueryResponse{}, newError("query failed: invalid status code: %d", resp.StatusCode)
 	}
 
 	var results QueryResponse
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return QueryResponse{}, WrapError(err, "query failed: invalid response")
+		return QueryResponse{}, wrapError(err, "query failed: invalid response")
 	}
 
 	return results, nil
@@ -80,21 +80,21 @@ func (g *Gorqlite) Execute(sql []string, opts ...Option) (ExecuteResponse, error
 func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ...Option) (ExecuteResponse, error) {
 	body, err := json.Marshal(sql)
 	if err != nil {
-		return ExecuteResponse{}, WrapError(err, "execute failed: failed to marshal query")
+		return ExecuteResponse{}, wrapError(err, "execute failed: failed to marshal query")
 	}
 	resp, err := g.apiClient.PostWithContext(ctx, "/db/execute", body, opts...)
 	if err != nil {
-		return ExecuteResponse{}, WrapError(err, "execute failed: request failed")
+		return ExecuteResponse{}, wrapError(err, "execute failed: request failed")
 	}
 	defer resp.Body.Close()
 
 	if !isStatusOK(resp.StatusCode) {
-		return ExecuteResponse{}, NewError("execute failed: invalid status code: %d", resp.StatusCode)
+		return ExecuteResponse{}, newError("execute failed: invalid status code: %d", resp.StatusCode)
 	}
 
 	var results ExecuteResponse
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return ExecuteResponse{}, WrapError(err, "execute failed: invalid response")
+		return ExecuteResponse{}, wrapError(err, "execute failed: invalid response")
 	}
 
 	return results, nil
@@ -109,17 +109,17 @@ func (g *Gorqlite) Status(opts ...Option) (Status, error) {
 func (g *Gorqlite) StatusWithContext(ctx context.Context, opts ...Option) (Status, error) {
 	resp, err := g.apiClient.GetWithContext(ctx, "/status", opts...)
 	if err != nil {
-		return Status{}, WrapError(err, "failed to fetch status")
+		return Status{}, wrapError(err, "failed to fetch status")
 	}
 	defer resp.Body.Close()
 
 	if !isStatusOK(resp.StatusCode) {
-		return Status{}, NewError("failed to fetch status: invalid status code: %d", resp.StatusCode)
+		return Status{}, newError("failed to fetch status: invalid status code: %d", resp.StatusCode)
 	}
 
 	var status Status
 	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		return Status{}, WrapError(err, "failed to fetch status: invalid response")
+		return Status{}, wrapError(err, "failed to fetch status: invalid response")
 	}
 	return status, nil
 }

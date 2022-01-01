@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/dunstall/gorqlite"
-	"github.com/dunstall/gorqlite/mocks"
+	"github.com/dunstall/gorqlite/mocks/api"
 	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -527,34 +527,34 @@ func TestGorqlite_StatusOK(t *testing.T) {
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
 
 	expected := gorqlite.Status{
-		Build: gorqlite.BuildStatus{
+		Build: gorqlite.StatusBuild{
 			Branch:    "master",
 			BuildTime: "2021-10-22T18:32:15-0400",
 			Commit:    "eb6da8f22cfd57d9f46cc31179de7d0cefe2f962",
 			Compiler:  "gc",
 			Version:   "v6.7.0",
 		},
-		Cluster: gorqlite.ClusterStatus{
+		Cluster: gorqlite.StatusCluster{
 			Addr:    "0.0.0.0:7001",
 			APIAddr: "0.0.0.0:6001",
 			HTTPS:   "false",
 		},
-		HTTP: gorqlite.HTTPStatus{
+		HTTP: gorqlite.StatusHTTP{
 			Auth:     "disabled",
 			BindAddr: "[::]:4001",
 		},
-		Node: gorqlite.NodeStatus{
+		Node: gorqlite.StatusNode{
 			StartTime: "2021-12-20T21:05:05.943343316Z",
 			Uptime:    "15.696393ms",
 		},
-		OS: gorqlite.OSStatus{
+		OS: gorqlite.StatusOS{
 			Executable: "/usr/local/bin/rqlited",
 			Hostname:   "12bcec7079d5",
 			PageSize:   4096,
 			Pid:        4541,
 			Ppid:       4523,
 		},
-		Runtime: gorqlite.RuntimeStatus{
+		Runtime: gorqlite.StatusRuntime{
 			GoArch:       "amd64",
 			GoMaxProcs:   8,
 			GoOS:         "linux",
@@ -562,7 +562,7 @@ func TestGorqlite_StatusOK(t *testing.T) {
 			NumGoroutine: 12,
 			Version:      "go1.16",
 		},
-		Store: gorqlite.StoreStatus{
+		Store: gorqlite.StatusStore{
 			Addr:             "0.0.0.0:7001",
 			ApplyTimeout:     "10s",
 			DBAppliedIndex:   0,
@@ -571,23 +571,23 @@ func TestGorqlite_StatusOK(t *testing.T) {
 			ElectionTimeout:  "1s",
 			FSMIndex:         0,
 			HeartbeatTimeout: "1s",
-			Leader: gorqlite.Leader{
+			Leader: gorqlite.LeaderInfo{
 				Addr:   "0.0.0.0:7002",
 				NodeID: "2",
 			},
 			NodeID: "1",
-			Nodes: []gorqlite.Node{
-				gorqlite.Node{
+			Nodes: []gorqlite.NodeInfo{
+				{
 					Addr:     "0.0.0.0:7001",
 					ID:       "1",
 					Suffrage: "Voter",
 				},
-				gorqlite.Node{
+				{
 					Addr:     "0.0.0.0:7002",
 					ID:       "2",
 					Suffrage: "Voter",
 				},
-				gorqlite.Node{
+				{
 					Addr:     "0.0.0.0:7003",
 					ID:       "3",
 					Suffrage: "Voter",

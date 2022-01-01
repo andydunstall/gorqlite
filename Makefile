@@ -23,7 +23,7 @@ system-test:
 # Runs a docker container setup to run system tests.
 .PHONY: env
 env: image
-	docker run -it --rm --volume=$(shell pwd):/app --workdir=/app --name gorqlite gorqlite /bin/bash
+	docker run -it --rm --volume=$(shell pwd):/app -p 6060:6060 --workdir=/app --name gorqlite gorqlite /bin/bash
 
 # Creates the environment test image.
 .PHONY: image

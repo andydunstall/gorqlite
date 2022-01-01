@@ -204,13 +204,11 @@ func TestDataAPIClient_ExecuteInvalidCommand(t *testing.T) {
 				LastInsertId: 0,
 				RowsAffected: 0,
 				Error:        "",
-				Time:         0,
 			},
 			{
 				LastInsertId: 0,
 				RowsAffected: 0,
 				Error:        "no such table: baz",
-				Time:         0,
 			},
 		},
 	}

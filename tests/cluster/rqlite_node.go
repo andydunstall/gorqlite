@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy/v2"
-	"github.com/dunstall/gorqlite"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,7 +30,7 @@ type RqliteNode struct {
 }
 
 func NewRqliteNode(id uint32) (*RqliteNode, error) {
-	wrapper := gorqlite.NewErrorWrapper("failed to create rqlite node")
+	wrapper := newErrorWrapper("failed to create rqlite node")
 
 	dir, err := ioutil.TempDir("", fmt.Sprintf("node-%d", id))
 	if err != nil {
@@ -76,7 +75,7 @@ func NewRqliteNode(id uint32) (*RqliteNode, error) {
 }
 
 func NewRqliteNodeWithJoin(id uint32, joinPort uint16) (*RqliteNode, error) {
-	wrapper := gorqlite.NewErrorWrapper("failed to create rqlite node")
+	wrapper := newErrorWrapper("failed to create rqlite node")
 
 	dir, err := ioutil.TempDir("", fmt.Sprintf("node-%d", id))
 	if err != nil {
@@ -121,7 +120,7 @@ func NewRqliteNodeWithJoin(id uint32, joinPort uint16) (*RqliteNode, error) {
 }
 
 func (n *RqliteNode) Reboot(duration int64, timeout bool) error {
-	wrapper := gorqlite.NewErrorWrapper("failed to reboot rqlite node")
+	wrapper := newErrorWrapper("failed to reboot rqlite node")
 
 	if err := n.Close(); err != nil {
 		return wrapper.Error(err)
@@ -161,7 +160,7 @@ func (n *RqliteNode) Close() error {
 		p.Stop()
 	}
 	if err := n.proc.Close(); err != nil {
-		return gorqlite.WrapError(err, "failed to close node")
+		return wrapError(err, "failed to close node")
 	}
 	return nil
 }
@@ -172,7 +171,7 @@ type RqliteProc struct {
 }
 
 func NewRqliteProc(id uint32, httpListenPort uint16, httpProxyPort uint16, raftListenPort uint16, raftProxyPort uint16, dir string) (RqliteProc, error) {
-	wrapper := gorqlite.NewErrorWrapper("failed to create rqlite proc")
+	wrapper := newErrorWrapper("failed to create rqlite proc")
 
 	lg, err := newLogger(fmt.Sprintf("rqlited-%d", id))
 	if err != nil {
@@ -218,7 +217,7 @@ func NewRqliteProc(id uint32, httpListenPort uint16, httpProxyPort uint16, raftL
 }
 
 func NewRqliteProcWithJoin(id uint32, httpListenPort uint16, httpProxyPort uint16, raftListenPort uint16, raftProxyPort uint16, dir string, joinPort uint16) (RqliteProc, error) {
-	wrapper := gorqlite.NewErrorWrapper("failed to create rqlite proc")
+	wrapper := newErrorWrapper("failed to create rqlite proc")
 
 	lg, err := newLogger(fmt.Sprintf("rqlited-%d", id))
 	if err != nil {
@@ -267,11 +266,11 @@ func NewRqliteProcWithJoin(id uint32, httpListenPort uint16, httpProxyPort uint1
 
 func (t *RqliteProc) Close() error {
 	if err := t.proc.Kill(); err != nil {
-		return gorqlite.WrapError(err, "failed to close rqlite proc")
+		return wrapError(err, "failed to close rqlite proc")
 	}
 	_, err := t.proc.Wait()
 	if err != nil {
-		return gorqlite.WrapError(err, "failed to close rqlite proc")
+		return wrapError(err, "failed to close rqlite proc")
 	}
 
 	log.WithFields(log.Fields{

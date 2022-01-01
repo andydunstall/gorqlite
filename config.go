@@ -23,13 +23,13 @@ type Config struct {
 	// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/CONSISTENCY.md.
 	Consistency string
 
-	// Transport is the underlying HTTP transport used for requests. This is
+	// transport is the underlying HTTP transport used for requests. This is
 	// only expected to be used for unit tests to mock the transport.
-	Transport http.RoundTripper
+	transport http.RoundTripper
 
-	// Clock is the underlying clock used to sleep. This is only expected to be
+	// clock is the underlying clock used to sleep. This is only expected to be
 	// used for unit tests to mock the clock.
-	Clock Clock
+	clock clock
 }
 
 // DefaultConfig returns the default configuration which is used as a base
@@ -40,8 +40,8 @@ func DefaultConfig() *Config {
 		HTTPHeaders:          make(http.Header),
 		Transaction:          false,
 		Consistency:          "",
-		Transport:            http.DefaultTransport,
-		Clock:                &SystemClock{},
+		transport:            http.DefaultTransport,
+		clock:                &systemClock{},
 	}
 }
 
@@ -74,14 +74,14 @@ func WithConsistency(consistency string) Option {
 	}
 }
 
-func WithTransport(transport http.RoundTripper) Option {
+func withTransport(transport http.RoundTripper) Option {
 	return func(conf *Config) {
-		conf.Transport = transport
+		conf.transport = transport
 	}
 }
 
-func WithClock(clock Clock) Option {
+func withClock(clock clock) Option {
 	return func(conf *Config) {
-		conf.Clock = clock
+		conf.clock = clock
 	}
 }

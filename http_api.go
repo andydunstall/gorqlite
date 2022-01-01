@@ -1,4 +1,4 @@
-//go:generate mockgen -source http_api.go -destination mocks/mock_http_api.go
+//go:generate mockgen -source http_api.go -destination mocks/http_api/mock_http_api.go
 
 package gorqlite
 
@@ -12,17 +12,17 @@ import (
 )
 
 // Redefine here to generate mock.
-type RoundTripper interface {
+type roundTripper interface {
 	http.RoundTripper
 }
 
-type Clock interface {
+type clock interface {
 	Sleep(d time.Duration)
 }
 
-type SystemClock struct{}
+type systemClock struct{}
 
-func (c *SystemClock) Sleep(d time.Duration) {
+func (c *systemClock) Sleep(d time.Duration) {
 	<-time.After(d)
 }
 
@@ -39,7 +39,7 @@ func NewHTTPAPIClient(hosts []string, opts ...Option) *HTTPAPIClient {
 		opt(conf)
 	}
 	client := &http.Client{
-		Transport: conf.Transport,
+		Transport: conf.transport,
 	}
 	return &HTTPAPIClient{
 		hosts:           hosts,
@@ -96,7 +96,7 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
-		return nil, WrapError(err, "failed to fetch: invalid request")
+		return nil, wrapError(err, "failed to fetch: invalid request")
 	}
 	if conf.HTTPHeaders != nil {
 		req.Header = conf.HTTPHeaders
@@ -105,7 +105,7 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 	for {
 		activeHost := api.activeHost()
 		if activeHost == "" {
-			return nil, NewError("failed to fetch: no addresses given")
+			return nil, newError("failed to fetch: no addresses given")
 		}
 		req.URL.Host = activeHost
 		req.Host = activeHost
@@ -116,17 +116,17 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 		}
 
 		if err == nil && !isRetryable(resp.StatusCode) {
-			return nil, NewError("failed to fetch: bad status code: status: %d", resp.StatusCode)
+			return nil, newError("failed to fetch: bad status code: status: %d", resp.StatusCode)
 		}
 
 		if retryAttempts >= (len(api.hosts) * 3) {
 			if err != nil {
-				return nil, WrapError(err, "failed to fetch: max retries exceeded")
+				return nil, wrapError(err, "failed to fetch: max retries exceeded")
 			}
-			return nil, NewError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
+			return nil, newError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
 		}
 
-		conf.Clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
+		conf.clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
 
 		// Force rotate even if round robin is disabled.
 		api.rotateActiveHost(true)

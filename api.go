@@ -1,4 +1,4 @@
-//go:generate mockgen -source api.go -destination mocks/mock_api.go
+//go:generate mockgen -source api.go -destination mocks/api/mock_api.go
 
 package gorqlite
 
