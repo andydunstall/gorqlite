@@ -263,6 +263,62 @@ func TestGorqlite_QueryOK(t *testing.T) {
 	require.Equal(t, expectedResult, result)
 }
 
+func TestGorqlite_QueryOneOK(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	body := `{
+    "results": [
+        {
+            "columns": [
+                "id",
+                "name"
+            ],
+            "types": [
+                "integer",
+                "text"
+            ],
+            "values": [
+                [
+                    1,
+                    "foo"
+                ],
+                [
+                    2,
+                    "bar"
+                ]
+            ],
+            "time": 10
+        }
+    ],
+    "time": 100
+}`
+	resp := &http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(body)),
+	}
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`)).Return(resp, nil)
+
+	dataClient := gorqlite.OpenWithClient(apiClient)
+	result, err := dataClient.QueryOne("SELECT * FROM mytable")
+	require.Nil(t, err)
+
+	expectedResult := gorqlite.QueryResult{
+		Columns: []string{"id", "name"},
+		Types:   []string{"integer", "text"},
+		Values: [][]interface{}{
+			{
+				float64(1), "foo",
+			},
+			{
+				float64(2), "bar",
+			},
+		},
+	}
+	require.Equal(t, expectedResult, result)
+}
+
 func TestGorqlite_QueryNullResults(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -428,6 +484,38 @@ func TestGorqlite_ExecuteOK(t *testing.T) {
 			LastInsertId: 2,
 			RowsAffected: 1,
 		},
+	}
+	require.Equal(t, expectedResult, result)
+}
+
+func TestGorqlite_ExecuteOneOK(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	body := `{
+    "results": [
+        {
+            "last_insert_id": 1,
+            "rows_affected": 1,
+            "time": 10
+        }
+    ],
+    "time": 100
+}`
+	resp := &http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(strings.NewReader(body)),
+	}
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["CREATE TABLE ..."]`)).Return(resp, nil)
+
+	dataClient := gorqlite.OpenWithClient(apiClient)
+	result, err := dataClient.ExecuteOne("CREATE TABLE ...")
+	require.Nil(t, err)
+
+	expectedResult := gorqlite.ExecuteResult{
+		LastInsertId: 1,
+		RowsAffected: 1,
 	}
 	require.Equal(t, expectedResult, result)
 }

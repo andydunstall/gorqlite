@@ -69,6 +69,21 @@ func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...O
 	return queryResp.Results, nil
 }
 
+func (g *Gorqlite) QueryOne(sql string, opts ...Option) (QueryResult, error) {
+	return g.QueryOneWithContext(context.Background(), sql, opts...)
+}
+
+func (g *Gorqlite) QueryOneWithContext(ctx context.Context, sql string, opts ...Option) (QueryResult, error) {
+	results, err := g.QueryWithContext(ctx, []string{sql}, opts...)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	if len(results) != 1 {
+		return QueryResult{}, newError("query failed: expected one result")
+	}
+	return results[0], nil
+}
+
 type executeResponse struct {
 	Results []ExecuteResult `json:"results,omitempty"`
 	Error   string          `json:"error,omitempty"`
@@ -108,6 +123,21 @@ func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ..
 	}
 
 	return executeResp.Results, nil
+}
+
+func (g *Gorqlite) ExecuteOne(sql string, opts ...Option) (ExecuteResult, error) {
+	return g.ExecuteOneWithContext(context.Background(), sql, opts...)
+}
+
+func (g *Gorqlite) ExecuteOneWithContext(ctx context.Context, sql string, opts ...Option) (ExecuteResult, error) {
+	results, err := g.ExecuteWithContext(ctx, []string{sql}, opts...)
+	if err != nil {
+		return ExecuteResult{}, err
+	}
+	if len(results) != 1 {
+		return ExecuteResult{}, newError("execute failed: expected one result")
+	}
+	return results[0], nil
 }
 
 // Status queries the rqlite status API.
