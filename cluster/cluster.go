@@ -19,7 +19,7 @@ func NewCluster() *Cluster {
 	}
 }
 
-// OpenCluster creates a new cluster with `numNodes` nodes where the first
+// ConnectCluster creates a new cluster with `numNodes` nodes where the first
 // node is the leader that the other nodes join.
 func OpenCluster(numNodes uint32) (*Cluster, error) {
 	cluster := NewCluster()
@@ -118,7 +118,7 @@ func (c *Cluster) isHealthy() bool {
 			"node_addr": addr,
 		})
 
-		conn := gorqlite.Open([]string{addr})
+		conn := gorqlite.Connect([]string{addr})
 		status, err := conn.Status()
 		if err != nil {
 			lg.Debugf("failed to get status: %s", err)

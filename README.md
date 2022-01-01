@@ -20,7 +20,7 @@ in).
 ### CREATE TABLE
 Connects to an rqlite cluster and creates a table. See `examples/create_table`.
 ```go
-conn := gorqlite.Open(clusterAddrs)
+conn := gorqlite.Connect(clusterAddrs)
 
 // Create table.
 execResult, err := conn.Execute([]string{

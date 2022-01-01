@@ -13,7 +13,7 @@ func main() {
 	}
 	defer cluster.Close()
 
-	conn := gorqlite.Open(cluster.Addrs())
+	conn := gorqlite.Connect(cluster.Addrs())
 
 	// Create table.
 	execResult, err := conn.Execute([]string{

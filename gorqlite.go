@@ -10,22 +10,22 @@ type Gorqlite struct {
 	apiClient APIClient
 }
 
-// Opens a connection to rqlite.
+// Connect opens a connection to rqlite.
 //
 // hosts is a list of addresses (in format host[:port]) for the known
 // nodes in the cluster.
 //
 // opts is a list of default options used for each request (which can be
 // overridden on a per request basis by passing opts to each method).
-func Open(hosts []string, opts ...Option) *Gorqlite {
+func Connect(hosts []string, opts ...Option) *Gorqlite {
 	apiClient := newHTTPAPIClient(hosts, opts...)
 	return &Gorqlite{
 		apiClient,
 	}
 }
 
-// OpenWithClient opens a connection to rqlite using a custom API client.
-func OpenWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
+// ConnectWithClient opens a connection to rqlite using a custom API client.
+func ConnectWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
 	return &Gorqlite{
 		apiClient,
 	}

@@ -25,7 +25,7 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	conn := gorqlite.Open(cluster.Addrs())
+	conn := gorqlite.Connect(cluster.Addrs())
 
 	// Create table.
 	execResults, err := conn.Execute([]string{
@@ -161,7 +161,7 @@ func TestDataAPIClient_QueryInvalidCommand(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	conn := gorqlite.Open(cluster.Addrs())
+	conn := gorqlite.Connect(cluster.Addrs())
 	_, err = conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, bar text)",
 		"INSERT INTO foo (bar) values ('baz')",
@@ -189,7 +189,7 @@ func TestDataAPIClient_ExecuteInvalidCommand(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
-	conn := gorqlite.Open(cluster.Addrs())
+	conn := gorqlite.Connect(cluster.Addrs())
 	result, err := conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, bar text)",
 		// Table does not exist.

@@ -146,7 +146,7 @@ func (n *Node) Close() error {
 }
 
 func (n *Node) leader(ctx context.Context) (string, error) {
-	conn := gorqlite.Open([]string{n.APIAdvAddr()})
+	conn := gorqlite.Connect([]string{n.APIAdvAddr()})
 	status, err := conn.StatusWithContext(ctx)
 	if err != nil {
 		return "", wrapError(err, "failed to get leader")
