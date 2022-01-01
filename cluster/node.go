@@ -125,6 +125,43 @@ func (n *Node) WaitForLeader(ctx context.Context) (string, error) {
 	}
 }
 
+// WaitForAllFSM waits until all outstanding database commands have actually
+// been applied to the database i.e. state machine.
+func (n *Node) WaitForAllFSM(ctx context.Context) (int, error) {
+	ticker := time.NewTicker(250 * time.Millisecond)
+	var err error
+	for {
+		select {
+		case <-ctx.Done():
+			if err != nil {
+				return 0, err
+			}
+			return 0, newError("failed to wait for all fsm: timed out")
+		case <-ticker.C:
+			var status gorqlite.Status
+			status, err = n.Status(ctx)
+			if err != nil {
+				continue
+			}
+
+			if status.Store.FSMIndex != status.Store.DBAppliedIndex {
+				err = newError("fsmIndex != dbAppliedIndex (%d != %d)", status.Store.FSMIndex, status.Store.DBAppliedIndex)
+				continue
+			}
+			return status.Store.FSMIndex, nil
+		}
+	}
+}
+
+func (n *Node) Status(ctx context.Context) (gorqlite.Status, error) {
+	conn := gorqlite.Connect([]string{n.APIAdvAddr()})
+	status, err := conn.StatusWithContext(ctx)
+	if err != nil {
+		return status, wrapError(err, "failed to get status")
+	}
+	return status, nil
+}
+
 func (n *Node) Close() error {
 	for _, p := range n.proxies {
 		p.Stop()
