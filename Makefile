@@ -41,6 +41,6 @@ fmt:
 
 .PHONY: lint
 lint:
-	golangci-lint run --disable-all -E deadcode,errcheck,gosimple,govet,ineffassign,staticcheck,structcheck,typecheck,unused,varcheck,asciicheck,bidichk,bodyclose,gocritic,godox,gosec,revive,stylecheck,unparam,wrapcheck --skip-dirs tests
+	golangci-lint run --disable-all -E errcheck,gosimple,govet,ineffassign,staticcheck,structcheck,typecheck,varcheck,asciicheck,bidichk,bodyclose,gocritic,godox,gosec,revive,stylecheck,unparam,wrapcheck --skip-dirs tests
 	# Lint tests with less strict rules.
-	golangci-lint run --disable-all -E deadcode,errcheck,gosimple,govet,ineffassign,staticcheck,structcheck,typecheck,unused,varcheck,asciicheck,bidichk,bodyclose,gocritic,godox,revive,stylecheck,unparam,wrapcheck tests/...
+	golangci-lint run --disable-all -E errcheck,gosimple,govet,ineffassign,staticcheck,structcheck,typecheck,varcheck,asciicheck,bidichk,bodyclose,gocritic,godox,revive,stylecheck,unparam,wrapcheck tests/...
