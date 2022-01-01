@@ -17,60 +17,59 @@ func main() {
 
 	conn := gorqlite.Connect(cluster.Addrs())
 
-	// Create table.
-	execResult, err := conn.Execute([]string{
+	execResults, err := conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, name text)",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	if execResult.HasError() {
-		log.Fatal(execResult.GetFirstError())
-	}
-
-	execResult, err = conn.Execute([]string{
 		`INSERT INTO foo(name) VALUES("fiona")`,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	if execResult.HasError() {
-		log.Fatal(execResult.GetFirstError())
+	if execResults.HasError() {
+		log.Fatal(execResults.GetFirstError())
 	}
-	id := execResult[0].LastInsertId
+	id := execResults[1].LastInsertId
 	log.Infof("id of the inserted row: %d", id)
 
-	queryResult, err := conn.Query([]string{
+	queryResult, err := conn.QueryOne(
 		fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-	})
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if queryResult.HasError() {
-		log.Fatal(queryResult.GetFirstError())
+	if queryResult.Error != "" {
+		log.Fatal(queryResult.Error)
 	}
-	log.Info(queryResult[0])
+	row, _ := queryResult.Next()
+	var name string
+	if err = row.Scan(&name); err != nil {
+		log.Fatal(err)
+	}
+	log.Info("name:", name)
 
-	execResult, err = conn.Execute([]string{
+	execResult, err := conn.ExecuteOne(
 		`UPDATE foo SET name="justin" WHERE name="fiona"`,
-	})
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if execResult.HasError() {
-		log.Fatal(execResult.GetFirstError())
+	if execResult.Error != "" {
+		log.Fatal(execResult.Error)
 	}
-	rowsAffected := execResult[0].RowsAffected
+	rowsAffected := execResult.RowsAffected
 	log.Infof("rows affected: %d", rowsAffected)
 
-	queryResult, err = conn.Query([]string{
+	queryResult, err = conn.QueryOne(
 		fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-	})
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if queryResult.HasError() {
-		log.Fatal(queryResult.GetFirstError())
+	if queryResult.Error != "" {
+		log.Fatal(queryResult.Error)
 	}
-	log.Info(queryResult[0])
+	row, _ = queryResult.Next()
+	if err = row.Scan(&name); err != nil {
+		log.Fatal(err)
+	}
+	log.Info("name:", name)
 }

@@ -1,4 +1,4 @@
-package gorqlite
+package main
 
 import (
 	"github.com/dunstall/gorqlite"
@@ -15,9 +15,11 @@ func main() {
 
 	conn := gorqlite.Connect(cluster.Addrs())
 
-	// Create table.
 	execResult, err := conn.Execute([]string{
 		"CREATE TABLE foo (id integer not null primary key, name text)",
+		`INSERT INTO foo(name) VALUES("foo")`,
+		`INSERT INTO foo(name) VALUES("bar")`,
+		`INSERT INTO foo(name) VALUES("baz")`,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -26,17 +28,22 @@ func main() {
 		log.Fatal(execResult.GetFirstError())
 	}
 
-	sql := []string{
-		`INSERT INTO foo(name) VALUES("fiona")`,
-		`INSERT INTO bar(name) VALUES("test")`,
-	}
-	execResult, err = conn.Execute(sql, gorqlite.WithTransaction(true))
+	queryResult, err := conn.QueryOne("SELECT * FROM foo")
 	if err != nil {
 		log.Fatal(err)
 	}
-	if execResult.HasError() {
-		log.Fatal(execResult.GetFirstError())
+	for {
+		row, ok := queryResult.Next()
+		if !ok {
+			break
+		}
+
+		var id int
+		var name string
+		if err = row.Scan(&id, &name); err != nil {
+			log.Fatal(err)
+		}
+		log.Info("id:", id)
+		log.Info("name:", name)
 	}
-	log.Infof("id for first insert: %d", execResult[0].LastInsertId)
-	log.Infof("id for second insert: %d", execResult[1].LastInsertId)
 }

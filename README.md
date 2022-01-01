@@ -20,68 +20,77 @@ in).
 ### CREATE TABLE
 Connects to an rqlite cluster and creates a table. See `examples/create_table`.
 ```go
-conn := gorqlite.Connect(clusterAddrs)
+conn := gorqlite.Connect(cluster.Addrs())
 
-// Create table.
-execResult, err := conn.Execute([]string{
+execResult, err := conn.ExecuteOne(
   "CREATE TABLE foo (id integer not null primary key, name text)",
-})
+)
 if err != nil {
   log.Fatal(err)
 }
-if execResult.HasError() {
-  log.Fatal(execResult.GetFirstError())
+if execResult.Error != "" {
+  log.Fatal(execResult.Error)
 }
 ```
 
 ### Multiple QUERY
 Inserts a row then selects the row. See `examples/query`.
 ```go
-execResult, err = conn.Execute([]string{
+execResults, err := conn.Execute([]string{
+  "CREATE TABLE foo (id integer not null primary key, name text)",
   `INSERT INTO foo(name) VALUES("fiona")`,
 })
 if err != nil {
   log.Fatal(err)
 }
-if execResult.HasError() {
-  log.Fatal(execResult.GetFirstError())
+if execResults.HasError() {
+  log.Fatal(execResults.GetFirstError())
 }
-id := execResult.Results[0].LastInsertId
-log.Infof("id of the inserted row: %d" ,id)
+id := execResults[1].LastInsertId
+log.Infof("id of the inserted row: %d", id)
 
-queryResult, err := conn.Query([]string{
+queryResult, err := conn.QueryOne(
   fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-})
+)
 if err != nil {
   log.Fatal(err)
 }
-if queryResult.HasError() {
-  log.Fatal(queryResult.GetFirstError())
+if queryResult.Error != "" {
+  log.Fatal(queryResult.Error)
 }
-log.Info(queryResult.Results[0])
+row, _ := queryResult.Next()
+var name string
+if err = row.Scan(&name); err != nil {
+  log.Fatal(err)
+}
+log.Info("name:", name)
 
-execResult, err = conn.Execute([]string{
+execResult, err := conn.ExecuteOne(
   `UPDATE foo SET name="justin" WHERE name="fiona"`,
-})
+)
 if err != nil {
   log.Fatal(err)
 }
-if execResult.HasError() {
-  log.Fatal(execResult.GetFirstError())
+if execResult.Error != "" {
+  log.Fatal(execResult.Error)
 }
-rowsAffected := execResult.Results[0].RowsAffected
-log.Infof("rows affected: %d" ,rowsAffected)
+rowsAffected := execResult.RowsAffected
+log.Infof("rows affected: %d", rowsAffected)
 
-queryResult, err = conn.Query([]string{
+queryResult, err = conn.QueryOne(
   fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-})
+)
 if err != nil {
   log.Fatal(err)
 }
-if queryResult.HasError() {
-  log.Fatal(queryResult.GetFirstError())
+if queryResult.Error != "" {
+  log.Fatal(queryResult.Error)
 }
-log.Info(queryResult.Results[0])
+row, _ = queryResult.Next()
+if err = row.Scan(&name); err != nil {
+  log.Fatal(err)
+}
+log.Info("name:", name)
 ```
 
 ### Transactions
@@ -102,13 +111,40 @@ log.Infof("id for first insert: %d", execResult.Results[0].LastInsertId)
 log.Infof("id for second insert: %d", execResult.Results[1].LastInsertId)
 ```
 
-### Consistency
-Runs multiple select queries with [strong consistency](https://github.com/rqlite/rqlite/blob/master/DOC/CONSISTENCY.md).
-See `examples/consistency`.
+### Custom Options
+Add default and method override options. See `examples/options`.
 ```go
-sql = []string{
-  `SELECT name FROM foo WHERE id="1"`,
-  `SELECT id FROM bar WHERE name="test"`,
+// Open a connection with custom HTTP headers that apply to all requests.
+conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithHTTPHeaders(http.Header{
+  "X-MYHEADER": []string{"my-value"},
+}))
+
+execResult, err := conn.ExecuteOne(
+  "CREATE TABLE foo (id integer not null primary key, name text)",
+)
+if err != nil {
+  log.Fatal(err)
+}
+if execResult.Error != "" {
+  log.Fatal(execResult.Error)
+}
+
+// Insert as a transaction.
+execResults, err := conn.Execute([]string{
+  `INSERT INTO foo(name) VALUES("foo")`,
+  `INSERT INTO foo(name) VALUES("bar")`,
+}, gorqlite.WithTransaction(true))
+if err != nil {
+  log.Fatal(err)
+}
+if execResults.HasError() {
+  log.Fatal(execResults.GetFirstError())
+}
+
+// Query with strong consistency.
+sql := []string{
+  `SELECT * FROM foo WHERE id="1"`,
+  `SELECT * FROM foo WHERE name="bar"`,
 }
 queryResult, err := conn.Query(sql, gorqlite.WithConsistency("strong"))
 if err != nil {
@@ -117,8 +153,22 @@ if err != nil {
 if queryResult.HasError() {
   log.Fatal(queryResult.GetFirstError())
 }
-log.Info(queryResult.Results[0])
-log.Info(queryResult.Results[1])
+for _, result := range queryResult {
+  for {
+    row, ok := result.Next()
+    if !ok {
+      break
+    }
+
+    var id int
+    var name string
+    if err = row.Scan(&id, &name); err != nil {
+      log.Fatal(err)
+    }
+    log.Info("id:", id)
+    log.Info("name:", name)
+  }
+}
 ```
 
 ## Testing

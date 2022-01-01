@@ -15,14 +15,13 @@ func main() {
 
 	conn := gorqlite.Connect(cluster.Addrs())
 
-	// Create table.
-	execResult, err := conn.Execute([]string{
+	execResult, err := conn.ExecuteOne(
 		"CREATE TABLE foo (id integer not null primary key, name text)",
-	})
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if execResult.HasError() {
-		log.Fatal(execResult.GetFirstError())
+	if execResult.Error != "" {
+		log.Fatal(execResult.Error)
 	}
 }
