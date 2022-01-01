@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dunstall/gorqlite"
-	"github.com/dunstall/gorqlite/tests/cluster"
+	"github.com/dunstall/gorqlite/cluster"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,14 +25,16 @@ func TestStatusAPIClient_PeerStatus(t *testing.T) {
 
 	require.True(cluster.WaitForHealthy(ctx))
 
+	raftAddrs := cluster.NodeRaftAddrs()
+
 	expectedLeader := gorqlite.LeaderInfo{
-		Addr:   "0.0.0.0:7001",
+		Addr:   raftAddrs[1],
 		NodeID: "1",
 	}
 	expectedNodes := []gorqlite.NodeInfo{
-		{Addr: "0.0.0.0:7001", ID: "1", Suffrage: "Voter"},
-		{Addr: "0.0.0.0:7002", ID: "2", Suffrage: "Voter"},
-		{Addr: "0.0.0.0:7003", ID: "3", Suffrage: "Voter"},
+		{Addr: raftAddrs[1], ID: "1", Suffrage: "Voter"},
+		{Addr: raftAddrs[2], ID: "2", Suffrage: "Voter"},
+		{Addr: raftAddrs[3], ID: "3", Suffrage: "Voter"},
 	}
 
 	for id, addr := range cluster.NodeAddrs() {

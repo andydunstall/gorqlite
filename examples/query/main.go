@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dunstall/gorqlite"
-	"github.com/dunstall/gorqlite/tests/cluster"
+	"github.com/dunstall/gorqlite/cluster"
 	log "github.com/sirupsen/logrus"
 )
 

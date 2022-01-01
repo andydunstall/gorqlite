@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/dunstall/gorqlite"
@@ -11,12 +10,12 @@ import (
 )
 
 type Cluster struct {
-	nodes map[uint32]*RqliteNode
+	nodes map[uint32]*Node
 }
 
 func NewCluster() *Cluster {
 	return &Cluster{
-		nodes: map[uint32]*RqliteNode{},
+		nodes: map[uint32]*Node{},
 	}
 }
 
@@ -25,21 +24,21 @@ func NewCluster() *Cluster {
 func OpenCluster(numNodes uint32) (*Cluster, error) {
 	cluster := NewCluster()
 
-	var leaderPort uint16
+	var leaderAddr string
 	for id := uint32(1); id <= numNodes; id++ {
-		if leaderPort == 0 {
-			node, err := NewRqliteNode(id)
+		if leaderAddr == "" {
+			node, err := NewNode("rqlited", id)
 			if err != nil {
 				return nil, err
 			}
-			cluster.AddNode(id, node)
-			leaderPort = node.ProxyHTTPPort
+			cluster.AddNode(node)
+			leaderAddr = node.APIAdvAddr()
 		} else {
-			node, err := NewRqliteNodeWithJoin(id, leaderPort)
+			node, err := NewNode("rqlited", id, WithJoin(leaderAddr))
 			if err != nil {
 				return nil, err
 			}
-			cluster.AddNode(id, node)
+			cluster.AddNode(node)
 		}
 	}
 
@@ -65,8 +64,15 @@ func (c *Cluster) WaitForHealthy(ctx context.Context) bool {
 func (c *Cluster) NodeAddrs() map[uint32]string {
 	nodeAddresses := make(map[uint32]string)
 	for id, node := range c.nodes {
-		addr := fmt.Sprintf("localhost:%d", node.ProxyHTTPPort)
-		nodeAddresses[id] = addr
+		nodeAddresses[id] = node.APIAdvAddr()
+	}
+	return nodeAddresses
+}
+
+func (c *Cluster) NodeRaftAddrs() map[uint32]string {
+	nodeAddresses := make(map[uint32]string)
+	for id, node := range c.nodes {
+		nodeAddresses[id] = node.RaftAdvAddr()
 	}
 	return nodeAddresses
 }
@@ -79,21 +85,8 @@ func (c *Cluster) Addrs() []string {
 	return addrs
 }
 
-func (c *Cluster) RandomNodeAddr() string {
-	nodes := c.NodeAddrs()
-	if len(nodes) == 0 {
-		return ""
-	}
-
-	ids := []uint32{}
-	for id := range nodes {
-		ids = append(ids, id)
-	}
-	return nodes[ids[rand.Int()%len(ids)]]
-}
-
-func (c *Cluster) AddNode(id uint32, node *RqliteNode) {
-	c.nodes[id] = node
+func (c *Cluster) AddNode(node *Node) {
+	c.nodes[node.ID()] = node
 }
 
 func (c *Cluster) RemoveNode(id uint32) {
@@ -161,6 +154,8 @@ func (c *Cluster) isHealthy() bool {
 	return true
 }
 
+// RunDefaultCluster runs a cluster with 3 nodes and waits for it to be
+// healthy.
 func RunDefaultCluster() (*Cluster, error) {
 	cluster, err := OpenCluster(3)
 	if err != nil {

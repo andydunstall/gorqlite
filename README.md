@@ -139,7 +139,8 @@ These are disabled by default using the `system` build tag. For additional loggi
 # or just `make system-test`
 ```
 
-Currently this depends on `toxiproxy-server` running (which will be removed soon and integrated into the test itself), used to add network faults in the cluster. A docker environment exists that can be used instead with:
+For convenience a docker environment is provided that already has Go and rqlite
+installed.
 ```go
 make env
 ```

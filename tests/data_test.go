@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dunstall/gorqlite"
-	"github.com/dunstall/gorqlite/tests/cluster"
+	"github.com/dunstall/gorqlite/cluster"
 	"github.com/stretchr/testify/require"
 )
 
