@@ -239,7 +239,7 @@ func TestGorqlite_QueryOK(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(body)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -307,7 +307,7 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(body)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -351,7 +351,7 @@ func TestGorqlite_QueryErrorResults(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(body)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["invalid"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -377,7 +377,7 @@ func TestGorqlite_QueryBadStatus(t *testing.T) {
 		StatusCode: 400,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["abc","123"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -389,7 +389,7 @@ func TestGorqlite_QueryNetworkError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/query", []byte(`["abc","123"]`)).Return(nil, fmt.Errorf("network err"))
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -420,7 +420,7 @@ func TestGorqlite_ExecuteOK(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(body)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -464,7 +464,7 @@ func TestGorqlite_ExecuteErrorResults(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(body)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -495,7 +495,7 @@ func TestGorqlite_ExecuteBadStatus(t *testing.T) {
 		StatusCode: 400,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(resp, nil)
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -507,7 +507,7 @@ func TestGorqlite_ExecuteNetworkError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(gomock.Any(), "/db/execute", []byte(`["abc","123"]`)).Return(nil, fmt.Errorf("network err"))
 
 	dataClient := gorqlite.OpenWithClient(apiClient)
@@ -523,7 +523,7 @@ func TestGorqlite_StatusOK(t *testing.T) {
 		StatusCode: 200,
 		Body:       ioutil.NopCloser(strings.NewReader(statusV6_7_0)),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
 
 	expected := gorqlite.Status{
@@ -610,7 +610,7 @@ func TestGorqlite_StatusBadStatus(t *testing.T) {
 		StatusCode: 400,
 		Body:       ioutil.NopCloser(strings.NewReader("")),
 	}
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
 
 	statusClient := gorqlite.OpenWithClient(apiClient)
@@ -622,7 +622,7 @@ func TestGorqlite_StatusNetworkError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	apiClient := mock_gorqlite.NewMockapiClient(ctrl)
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(nil, fmt.Errorf("network err"))
 
 	statusClient := gorqlite.OpenWithClient(apiClient)

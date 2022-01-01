@@ -6,32 +6,26 @@ import (
 )
 
 // Gorqlite is a client for the rqlite API endpoints.
-//
-// `Open` accepts a list of options to override the
-// defaults in `DefaultConfig`, which will be used for all requests.
-// Each method also accepts a list of options which overrides the options
-// from `Open` for that request only.
 type Gorqlite struct {
-	apiClient apiClient
+	apiClient APIClient
 }
 
 // Opens a connection to rqlite.
 //
-// `hosts` is a list of addresses (in `host[:port]) format for the known
-// nodes in the cluster. If `ActiveHostRoundRobin` is enabled will rotate
-// between the addresses on each request, otherwise will iterate though the
-// hosts until one works.
+// hosts is a list of addresses (in format host[:port]) for the known
+// nodes in the cluster.
 //
-// `opts` is a list of default options used for each request (see `Config`).
+// opts is a list of default options used for each request (which can be
+// overridden on a per request basis by passing opts to each method).
 func Open(hosts []string, opts ...Option) *Gorqlite {
-	apiClient := NewHTTPAPIClient(hosts, opts...)
+	apiClient := newHTTPAPIClient(hosts, opts...)
 	return &Gorqlite{
 		apiClient,
 	}
 }
 
-// Opens a connection to rqlite using a custom API client (used for testing).
-func OpenWithClient(apiClient apiClient, opts ...Option) *Gorqlite {
+// OpenWithClient opens a connection to rqlite using a custom API client.
+func OpenWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
 	return &Gorqlite{
 		apiClient,
 	}

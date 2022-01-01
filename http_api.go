@@ -26,22 +26,22 @@ func (c *systemClock) Sleep(d time.Duration) {
 	<-time.After(d)
 }
 
-type HTTPAPIClient struct {
+type httpAPIClient struct {
 	hosts           []string
 	activeHostIndex int
 	client          *http.Client
-	conf            *Config
+	conf            *config
 }
 
-func NewHTTPAPIClient(hosts []string, opts ...Option) *HTTPAPIClient {
-	conf := DefaultConfig()
+func newHTTPAPIClient(hosts []string, opts ...Option) *httpAPIClient {
+	conf := defaultConfig()
 	for _, opt := range opts {
 		opt(conf)
 	}
 	client := &http.Client{
 		Transport: conf.transport,
 	}
-	return &HTTPAPIClient{
+	return &httpAPIClient{
 		hosts:           hosts,
 		activeHostIndex: 0,
 		client:          client,
@@ -49,23 +49,23 @@ func NewHTTPAPIClient(hosts []string, opts ...Option) *HTTPAPIClient {
 	}
 }
 
-func (api *HTTPAPIClient) Get(path string, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) Get(path string, opts ...Option) (*http.Response, error) {
 	return api.fetch(context.Background(), http.MethodGet, path, nil, opts...)
 }
 
-func (api *HTTPAPIClient) GetWithContext(ctx context.Context, path string, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) GetWithContext(ctx context.Context, path string, opts ...Option) (*http.Response, error) {
 	return api.fetch(ctx, http.MethodGet, path, nil, opts...)
 }
 
-func (api *HTTPAPIClient) Post(path string, body []byte, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) Post(path string, body []byte, opts ...Option) (*http.Response, error) {
 	return api.fetch(context.Background(), http.MethodPost, path, body, opts...)
 }
 
-func (api *HTTPAPIClient) PostWithContext(ctx context.Context, path string, body []byte, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) PostWithContext(ctx context.Context, path string, body []byte, opts ...Option) (*http.Response, error) {
 	return api.fetch(ctx, http.MethodPost, path, body, opts...)
 }
 
-func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body []byte, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body []byte, opts ...Option) (*http.Response, error) {
 	defer api.rotateActiveHost(false)
 
 	// Apply overrides to a copy of api conf.
@@ -134,14 +134,14 @@ func (api *HTTPAPIClient) fetch(ctx context.Context, method, path string, body [
 	}
 }
 
-func (api *HTTPAPIClient) activeHost() string {
+func (api *httpAPIClient) activeHost() string {
 	if 0 <= api.activeHostIndex && api.activeHostIndex < len(api.hosts) {
 		return api.hosts[api.activeHostIndex]
 	}
 	return ""
 }
 
-func (api *HTTPAPIClient) rotateActiveHost(force bool) {
+func (api *httpAPIClient) rotateActiveHost(force bool) {
 	if api.conf.ActiveHostRoundRobin || force {
 		api.activeHostIndex = ((api.activeHostIndex + 1) % len(api.hosts))
 	}

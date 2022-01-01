@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-type apiClient interface {
+type APIClient interface {
 	Get(path string, opts ...Option) (*http.Response, error)
 	GetWithContext(ctx context.Context, path string, opts ...Option) (*http.Response, error)
 	Post(path string, body []byte, opts ...Option) (*http.Response, error)
