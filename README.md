@@ -93,24 +93,6 @@ if err = row.Scan(&name); err != nil {
 log.Info("name:", name)
 ```
 
-### Transactions
-Runs multiple queries within a transaction. See `examples/transaction`.
-```go
-sql := []string{
-  `INSERT INTO foo(name) VALUES("fiona")`,
-  `INSERT INTO bar(name) VALUES("test")`,
-}
-execResult, err = conn.Execute(sql, gorqlite.WithTransaction(true))
-if err != nil {
-  log.Fatal(err)
-}
-if execResult.HasError() {
-  log.Fatal(execResult.GetFirstError())
-}
-log.Infof("id for first insert: %d", execResult.Results[0].LastInsertId)
-log.Infof("id for second insert: %d", execResult.Results[1].LastInsertId)
-```
-
 ### Custom Options
 Add default and method override options. See `examples/options`.
 ```go
