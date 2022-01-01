@@ -8,22 +8,7 @@ provide a Go interface for the RQLite API endpoints.
 The design of this library is based on [rqlite-js](https://github.com/rqlite/rqlite-js).
 
 ## In Progress
-- [ ] Add travis CI tests to test:
-  * `make generate` makes no changes
-  * `make fmt` makes no changes
-  * `make lint` passes 
-  * `make test` passes
-  * `make system-test` passes
-- [ ] Add API docs (and code level comments)
-- [ ] Add support for follow redirects and cache leader (see https://github.com/rqlite/rqlite/blob/master/DOC/DATA_API.md#disabling-request-forwarding)
-- [ ] Add queries to result types (such as `QueryResult.Get("name")`)
-- [ ] Add system tests for:
-  * consistency and transactions
-  * node/leader failover/retries
-- [ ] Add `/nodes` and `/ready` APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/DIAGNOSTICS.md)
-- [ ] Add backup APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/BACKUPS.md)
-- [ ] Add long running test with random queries to check for leaks (see go.dev/doc/diagnostic)
-- [ ] Review rqlite/rqlite-js, rqlite/gorqlite and rqlite/pyrqlite SDKs for missing tests, invalid handling of requests/responses, etc
+See `TODO.md`.
 
 ## Examples
 Contains the same examples as [rqlite-js](https://github.com/rqlite/rqlite-js)
