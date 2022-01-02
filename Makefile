@@ -15,10 +15,21 @@ deps:
 test:
 	go test ./...
 
+.PHONY: cover
+cover:
+	go test -coverprofile=cover.out ./...
+	go tool cover -html=cover.out
+
 # Runs all system tests (and unit tests).
 .PHONY: system-test
 system-test:
 	DEBUG=true go test ./... -v -tags system
+
+.PHONY: system-cover
+system-cover:
+	go test -coverprofile=cover.out ./... -tags system
+	go tool cover -html=cover.out
+
 
 # Runs a docker container setup to run system tests.
 .PHONY: env
