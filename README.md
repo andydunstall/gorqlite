@@ -6,18 +6,11 @@ A client library for [rqlite](https://github.com/rqlite/rqlite), the
 lightweight, distributed database built on SQLite. This package is designed to
 provide a Go interface for the RQLite API endpoints.
 
-The design of this library is based on [rqlite-js](https://github.com/rqlite/rqlite-js).
-
 ## In Progress
 See `TODO.md`.
 
 ## Examples
-Contains the same examples as [rqlite-js](https://github.com/rqlite/rqlite-js)
-ported into `gorqlite`. See `examples/`, where each example will spin up its
-own local cluster (see `Dockerfile` and `make env` for an environment to run
-in).
-
-### CREATE TABLE
+### Connect
 Connects to an rqlite cluster and creates a table. See `examples/create_table`.
 ```go
 conn := gorqlite.Connect(cluster.Addrs())
@@ -33,7 +26,7 @@ if execResult.Error != "" {
 }
 ```
 
-### Multiple QUERY
+### Execute Then Query
 Inserts a row then selects the row. See `examples/query`.
 ```go
 execResults, err := conn.Execute([]string{
@@ -96,7 +89,6 @@ log.Info("name:", name)
 ### Custom Options
 Add default and method override options. See `examples/options`.
 ```go
-// Open a connection with custom HTTP headers that apply to all requests.
 conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithActiveHostRoundRobin(false))
 
 execResult, err := conn.ExecuteOne(
