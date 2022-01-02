@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -209,33 +210,33 @@ func TestGorqlite_QueryOK(t *testing.T) {
 	defer ctrl.Finish()
 
 	body := `{
-    "results": [
-        {
-            "columns": [
-                "id",
-                "name"
-            ],
-            "types": [
-                "integer",
-                "text"
-            ],
-            "values": [
-                [
-                    1,
-                    "foo"
-                ],
-                [
-                    2,
-                    "bar"
-                ]
-            ]
-        }
-    ]
-}`
+     "results": [
+         {
+             "columns": [
+                 "id",
+                 "name"
+             ],
+             "types": [
+                 "integer",
+                 "text"
+             ],
+             "values": [
+                 [
+                     1,
+                     "foo"
+                 ],
+                 [
+                     2,
+                     "bar"
+                 ]
+             ]
+         }
+     ]
+ }`
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
@@ -307,11 +308,86 @@ func TestGorqlite_QueryOneOK(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
 	result, err := conn.QueryOne("SELECT * FROM mytable")
+	require.Nil(t, err)
+
+	expectedResult := gorqlite.QueryResult{
+		Columns: []string{"id", "name"},
+		Values: [][]interface{}{
+			{
+				float64(1), "foo",
+			},
+			{
+				float64(2), "bar",
+			},
+		},
+	}
+	require.Equal(t, expectedResult, result)
+
+	var id int
+	var name string
+
+	row, ok := result.Next()
+	require.True(t, ok)
+	require.Nil(t, row.Scan(&id, &name))
+	require.Equal(t, 1, id)
+	require.Equal(t, "foo", name)
+
+	row, ok = result.Next()
+	require.True(t, ok)
+	require.Nil(t, row.Scan(&id, &name))
+	require.Equal(t, 2, id)
+	require.Equal(t, "bar", name)
+
+	_, ok = result.Next()
+	require.False(t, ok)
+}
+
+func TestGorqlite_QueryWithConsistency(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	body := `{
+    "results": [
+        {
+            "columns": [
+                "id",
+                "name"
+            ],
+            "types": [
+                "integer",
+                "text"
+            ],
+            "values": [
+                [
+                    1,
+                    "foo"
+                ],
+                [
+                    2,
+                    "bar"
+                ]
+            ]
+        }
+    ]
+}`
+	resp := httpResponse(http.StatusOK, strings.NewReader(body))
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	query := url.Values{}
+	query.Add("consistency", "strong")
+	apiClient.EXPECT().PostWithContext(
+		gomock.Any(), "/db/query", query, []byte(`["SELECT * FROM mytable"]`),
+	).Return(resp, nil)
+
+	conn := gorqlite.ConnectWithClient(apiClient)
+	result, err := conn.QueryOne(
+		"SELECT * FROM mytable",
+		gorqlite.WithConsistency("strong"),
+	)
 	require.Nil(t, err)
 
 	expectedResult := gorqlite.QueryResult{
@@ -383,7 +459,7 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["SELECT * FROM mytable"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
@@ -433,7 +509,7 @@ func TestGorqlite_QueryErrorResults(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["invalid"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["invalid"]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
@@ -457,11 +533,11 @@ func TestGorqlite_QueryBadStatus(t *testing.T) {
 	resp := httpResponse(http.StatusBadRequest, strings.NewReader(""))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT ...","SELECT ..."]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	_, err := conn.Query([]string{"abc", "123"})
+	_, err := conn.Query([]string{"SELECT ...", "SELECT ..."})
 	require.Error(t, err)
 }
 
@@ -471,11 +547,11 @@ func TestGorqlite_QueryNetworkError(t *testing.T) {
 
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/query", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT ...","SELECT ..."]`),
 	).Return(nil, fmt.Errorf("network err"))
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	_, err := conn.Query([]string{"abc", "123"})
+	_, err := conn.Query([]string{"SELECT ...", "SELECT ..."})
 	require.Error(t, err)
 }
 
@@ -498,11 +574,11 @@ func TestGorqlite_ExecuteOK(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/execute", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	result, err := conn.Execute([]string{"abc", "123"})
+	result, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Nil(t, err)
 
 	expectedResult := gorqlite.ExecuteResults{
@@ -533,11 +609,42 @@ func TestGorqlite_ExecuteOneOK(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/execute", []byte(`["CREATE TABLE ..."]`),
+		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE TABLE ..."]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
 	result, err := conn.ExecuteOne("CREATE TABLE ...")
+	require.Nil(t, err)
+
+	expectedResult := gorqlite.ExecuteResult{
+		LastInsertId: 1,
+		RowsAffected: 1,
+	}
+	require.Equal(t, expectedResult, result)
+}
+
+func TestGorqlite_ExecuteWithTransaction(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	body := `{
+    "results": [
+        {
+            "last_insert_id": 1,
+            "rows_affected": 1
+        }
+    ]
+}`
+	resp := httpResponse(http.StatusOK, strings.NewReader(body))
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	query := url.Values{}
+	query.Add("transaction", "")
+	apiClient.EXPECT().PostWithContext(
+		gomock.Any(), "/db/execute", query, []byte(`["INSERT ..."]`),
+	).Return(resp, nil)
+
+	conn := gorqlite.ConnectWithClient(apiClient)
+	result, err := conn.ExecuteOne("INSERT ...", gorqlite.WithTransaction(true))
 	require.Nil(t, err)
 
 	expectedResult := gorqlite.ExecuteResult{
@@ -565,11 +672,11 @@ func TestGorqlite_ExecuteErrorResults(t *testing.T) {
 	resp := httpResponse(http.StatusOK, strings.NewReader(body))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/execute", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	result, err := conn.Execute([]string{"abc", "123"})
+	result, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Nil(t, err)
 
 	expectedResult := gorqlite.ExecuteResults{
@@ -592,11 +699,11 @@ func TestGorqlite_ExecuteBadStatus(t *testing.T) {
 	resp := httpResponse(http.StatusBadRequest, strings.NewReader(""))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/execute", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	_, err := conn.Execute([]string{"abc", "123"})
+	_, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Error(t, err)
 }
 
@@ -606,11 +713,11 @@ func TestGorqlite_ExecuteNetworkError(t *testing.T) {
 
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().PostWithContext(
-		gomock.Any(), "/db/execute", []byte(`["abc","123"]`),
+		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(nil, fmt.Errorf("network err"))
 
 	conn := gorqlite.ConnectWithClient(apiClient)
-	_, err := conn.Execute([]string{"abc", "123"})
+	_, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Error(t, err)
 }
 
@@ -620,7 +727,7 @@ func TestGorqlite_StatusOK(t *testing.T) {
 
 	resp := httpResponse(http.StatusOK, strings.NewReader(statusV6_7_0))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
-	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
+	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status", url.Values{}).Return(resp, nil)
 
 	expected := gorqlite.Status{
 		Build: gorqlite.StatusBuild{
@@ -704,7 +811,9 @@ func TestGorqlite_StatusBadStatus(t *testing.T) {
 
 	resp := httpResponse(http.StatusBadRequest, strings.NewReader(""))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
-	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status").Return(resp, nil)
+	apiClient.EXPECT().GetWithContext(
+		gomock.Any(), "/status", url.Values{},
+	).Return(resp, nil)
 
 	conn := gorqlite.ConnectWithClient(apiClient)
 	_, err := conn.Status()
@@ -717,7 +826,7 @@ func TestGorqlite_StatusNetworkError(t *testing.T) {
 
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(
-		gomock.Any(), "/status",
+		gomock.Any(), "/status", url.Values{},
 	).Return(nil, fmt.Errorf("network err"))
 
 	conn := gorqlite.ConnectWithClient(apiClient)

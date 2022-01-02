@@ -3,6 +3,8 @@ package gorqlite
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 )
 
 // Gorqlite is a client for the rqlite API endpoints.
@@ -15,10 +17,16 @@ type Gorqlite struct {
 // hosts is a list of addresses (in format host[:port]) for the known
 // nodes in the cluster.
 //
-// opts is a list of default options used for each request (which can be
-// overridden on a per request basis by passing opts to each method).
+// opts is a list of opts to apply to every request.
 func Connect(hosts []string, opts ...Option) *Gorqlite {
-	apiClient := newHTTPAPIClient(hosts, opts...)
+	conf := defaultConfig()
+	for _, opt := range opts {
+		opt(conf)
+	}
+
+	apiClient := newHTTPAPIClient(
+		hosts, http.DefaultTransport, &systemClock{}, conf.ActiveHostRoundRobin,
+	)
 	return &Gorqlite{
 		apiClient,
 	}
@@ -39,16 +47,26 @@ type queryResponse struct {
 // Query runs the given query `sql` statements to rqlite and returns the
 // results.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#querying-data.
-func (g *Gorqlite) Query(sql []string, opts ...Option) (QueryResults, error) {
+func (g *Gorqlite) Query(sql []string, opts ...QueryOption) (QueryResults, error) {
 	return g.QueryWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...Option) (QueryResults, error) {
+func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...QueryOption) (QueryResults, error) {
+	conf := defaultQueryConfig()
+	for _, opt := range opts {
+		opt(conf)
+	}
+
+	query := url.Values{}
+	if conf.Consistency != "" {
+		query.Add("consistency", conf.Consistency)
+	}
+
 	body, err := json.Marshal(sql)
 	if err != nil {
 		return nil, wrapError(err, "query failed: failed to marshal query")
 	}
-	resp, err := g.apiClient.PostWithContext(ctx, "/db/query", body, opts...)
+	resp, err := g.apiClient.PostWithContext(ctx, "/db/query", query, body)
 	if err != nil {
 		return nil, wrapError(err, "query failed: request failed")
 	}
@@ -69,11 +87,11 @@ func (g *Gorqlite) QueryWithContext(ctx context.Context, sql []string, opts ...O
 	return queryResp.Results, nil
 }
 
-func (g *Gorqlite) QueryOne(sql string, opts ...Option) (QueryResult, error) {
+func (g *Gorqlite) QueryOne(sql string, opts ...QueryOption) (QueryResult, error) {
 	return g.QueryOneWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) QueryOneWithContext(ctx context.Context, sql string, opts ...Option) (QueryResult, error) {
+func (g *Gorqlite) QueryOneWithContext(ctx context.Context, sql string, opts ...QueryOption) (QueryResult, error) {
 	results, err := g.QueryWithContext(ctx, []string{sql}, opts...)
 	if err != nil {
 		return QueryResult{}, err
@@ -95,16 +113,26 @@ type executeResponse struct {
 //
 // To enable transactions use `WithTransaction(true)` option.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#transactions.
-func (g *Gorqlite) Execute(sql []string, opts ...Option) (ExecuteResults, error) {
+func (g *Gorqlite) Execute(sql []string, opts ...ExecuteOption) (ExecuteResults, error) {
 	return g.ExecuteWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ...Option) (ExecuteResults, error) {
+func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ...ExecuteOption) (ExecuteResults, error) {
+	conf := defaultExecuteConfig()
+	for _, opt := range opts {
+		opt(conf)
+	}
+
+	query := url.Values{}
+	if conf.Transaction {
+		query.Add("transaction", "")
+	}
+
 	body, err := json.Marshal(sql)
 	if err != nil {
 		return nil, wrapError(err, "execute failed: failed to marshal query")
 	}
-	resp, err := g.apiClient.PostWithContext(ctx, "/db/execute", body, opts...)
+	resp, err := g.apiClient.PostWithContext(ctx, "/db/execute", query, body)
 	if err != nil {
 		return nil, wrapError(err, "execute failed: request failed")
 	}
@@ -125,11 +153,11 @@ func (g *Gorqlite) ExecuteWithContext(ctx context.Context, sql []string, opts ..
 	return executeResp.Results, nil
 }
 
-func (g *Gorqlite) ExecuteOne(sql string, opts ...Option) (ExecuteResult, error) {
+func (g *Gorqlite) ExecuteOne(sql string, opts ...ExecuteOption) (ExecuteResult, error) {
 	return g.ExecuteOneWithContext(context.Background(), sql, opts...)
 }
 
-func (g *Gorqlite) ExecuteOneWithContext(ctx context.Context, sql string, opts ...Option) (ExecuteResult, error) {
+func (g *Gorqlite) ExecuteOneWithContext(ctx context.Context, sql string, opts ...ExecuteOption) (ExecuteResult, error) {
 	results, err := g.ExecuteWithContext(ctx, []string{sql}, opts...)
 	if err != nil {
 		return ExecuteResult{}, err
@@ -142,12 +170,12 @@ func (g *Gorqlite) ExecuteOneWithContext(ctx context.Context, sql string, opts .
 
 // Status queries the rqlite status API.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DIAGNOSTICS.md#status-and-diagnostics-api.
-func (g *Gorqlite) Status(opts ...Option) (Status, error) {
-	return g.StatusWithContext(context.Background(), opts...)
+func (g *Gorqlite) Status() (Status, error) {
+	return g.StatusWithContext(context.Background())
 }
 
-func (g *Gorqlite) StatusWithContext(ctx context.Context, opts ...Option) (Status, error) {
-	resp, err := g.apiClient.GetWithContext(ctx, "/status", opts...)
+func (g *Gorqlite) StatusWithContext(ctx context.Context) (Status, error) {
+	resp, err := g.apiClient.GetWithContext(ctx, "/status", url.Values{})
 	if err != nil {
 		return Status{}, wrapError(err, "failed to fetch status")
 	}

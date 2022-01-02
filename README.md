@@ -97,9 +97,7 @@ log.Info("name:", name)
 Add default and method override options. See `examples/options`.
 ```go
 // Open a connection with custom HTTP headers that apply to all requests.
-conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithHTTPHeaders(http.Header{
-  "X-MYHEADER": []string{"my-value"},
-}))
+conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithActiveHostRoundRobin(false))
 
 execResult, err := conn.ExecuteOne(
   "CREATE TABLE foo (id integer not null primary key, name text)",

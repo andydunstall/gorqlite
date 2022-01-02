@@ -27,52 +27,47 @@ func (c *systemClock) Sleep(d time.Duration) {
 }
 
 type httpAPIClient struct {
-	hosts           []string
-	activeHostIndex int
-	client          *http.Client
-	conf            *config
+	hosts                []string
+	activeHostIndex      int
+	client               *http.Client
+	clock                clock
+	activeHostRoundRobin bool
 }
 
-func newHTTPAPIClient(hosts []string, opts ...Option) *httpAPIClient {
-	conf := defaultConfig()
-	for _, opt := range opts {
-		opt(conf)
-	}
+func newHTTPAPIClient(hosts []string,
+	transport http.RoundTripper,
+	clock clock,
+	activeHostRoundRobin bool) *httpAPIClient {
 	client := &http.Client{
-		Transport: conf.transport,
+		Transport: transport,
 	}
 	return &httpAPIClient{
-		hosts:           hosts,
-		activeHostIndex: 0,
-		client:          client,
-		conf:            conf,
+		hosts:                hosts,
+		activeHostIndex:      0,
+		client:               client,
+		clock:                clock,
+		activeHostRoundRobin: activeHostRoundRobin,
 	}
 }
 
-func (api *httpAPIClient) Get(path string, opts ...Option) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodGet, path, nil, opts...)
+func (api *httpAPIClient) Get(path string, query url.Values) (*http.Response, error) {
+	return api.fetch(context.Background(), http.MethodGet, path, query, nil)
 }
 
-func (api *httpAPIClient) GetWithContext(ctx context.Context, path string, opts ...Option) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodGet, path, nil, opts...)
+func (api *httpAPIClient) GetWithContext(ctx context.Context, path string, query url.Values) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodGet, path, query, nil)
 }
 
-func (api *httpAPIClient) Post(path string, body []byte, opts ...Option) (*http.Response, error) {
-	return api.fetch(context.Background(), http.MethodPost, path, body, opts...)
+func (api *httpAPIClient) Post(path string, query url.Values, body []byte) (*http.Response, error) {
+	return api.fetch(context.Background(), http.MethodPost, path, query, body)
 }
 
-func (api *httpAPIClient) PostWithContext(ctx context.Context, path string, body []byte, opts ...Option) (*http.Response, error) {
-	return api.fetch(ctx, http.MethodPost, path, body, opts...)
+func (api *httpAPIClient) PostWithContext(ctx context.Context, path string, query url.Values, body []byte) (*http.Response, error) {
+	return api.fetch(ctx, http.MethodPost, path, query, body)
 }
 
-func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body []byte, opts ...Option) (*http.Response, error) {
+func (api *httpAPIClient) fetch(ctx context.Context, method, path string, query url.Values, body []byte) (*http.Response, error) {
 	defer api.rotateActiveHost(false)
-
-	// Apply overrides to a copy of api conf.
-	conf := *api.conf
-	for _, opt := range opts {
-		opt(&conf)
-	}
 
 	var reqBody io.Reader
 	if body != nil {
@@ -80,13 +75,6 @@ func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body [
 	}
 
 	retryAttempts := 0
-	query := url.Values{}
-	if conf.Transaction {
-		query.Add("transaction", "")
-	}
-	if conf.Consistency != "" {
-		query.Add("level", conf.Consistency)
-	}
 	u := &url.URL{
 		Scheme: "http",
 		// Host set per retry.
@@ -97,9 +85,6 @@ func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body [
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), reqBody)
 	if err != nil {
 		return nil, wrapError(err, "failed to fetch: invalid request")
-	}
-	if conf.HTTPHeaders != nil {
-		req.Header = conf.HTTPHeaders
 	}
 
 	for {
@@ -126,7 +111,7 @@ func (api *httpAPIClient) fetch(ctx context.Context, method, path string, body [
 			return nil, newError("failed to fetch: max retries exceeded: status: %d", resp.StatusCode)
 		}
 
-		conf.clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
+		api.clock.Sleep(waitTimeExponential(retryAttempts, time.Millisecond*100))
 
 		// Force rotate even if round robin is disabled.
 		api.rotateActiveHost(true)
@@ -142,7 +127,7 @@ func (api *httpAPIClient) activeHost() string {
 }
 
 func (api *httpAPIClient) rotateActiveHost(force bool) {
-	if api.conf.ActiveHostRoundRobin || force {
+	if api.activeHostRoundRobin || force {
 		api.activeHostIndex = ((api.activeHostIndex + 1) % len(api.hosts))
 	}
 }

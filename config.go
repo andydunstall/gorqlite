@@ -1,25 +1,7 @@
 package gorqlite
 
-import (
-	"net/http"
-)
-
 type config struct {
 	ActiveHostRoundRobin bool
-
-	HTTPHeaders http.Header
-
-	Transaction bool
-
-	Consistency string
-
-	// transport is the underlying HTTP transport used for requests. This is
-	// only expected to be used for unit tests to mock the transport.
-	transport http.RoundTripper
-
-	// clock is the underlying clock used to sleep. This is only expected to be
-	// used for unit tests to mock the clock.
-	clock clock
 }
 
 // defaultConfig returns the default configuration which is used as a base
@@ -27,11 +9,6 @@ type config struct {
 func defaultConfig() *config {
 	return &config{
 		ActiveHostRoundRobin: true,
-		HTTPHeaders:          make(http.Header),
-		Transaction:          false,
-		Consistency:          "",
-		transport:            http.DefaultTransport,
-		clock:                &systemClock{},
 	}
 }
 
@@ -52,40 +29,45 @@ func WithActiveHostRoundRobin(enabled bool) Option {
 	}
 }
 
-// WithHTTPHeaders adds HTTP headers to the request.
-func WithHTTPHeaders(headers http.Header) Option {
-	return func(conf *config) {
-		conf.HTTPHeaders = headers
+type queryConfig struct {
+	Consistency string
+}
+
+func defaultQueryConfig() *queryConfig {
+	return &queryConfig{
+		Consistency: "",
 	}
 }
+
+type QueryOption func(conf *queryConfig)
+
+// WithConsistency sets the `level` query parameter if set, otherwise it is not
+// set (so rqlite will default to weak consistency.
+// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/CONSISTENCY.md.
+func WithConsistency(consistency string) QueryOption {
+	return func(conf *queryConfig) {
+		conf.Consistency = consistency
+	}
+}
+
+type executeConfig struct {
+	Transaction bool
+}
+
+func defaultExecuteConfig() *executeConfig {
+	return &executeConfig{
+		Transaction: false,
+	}
+}
+
+type ExecuteOption func(conf *executeConfig)
 
 // WithTransaction sets the `transaction` query parameter when enabled.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#transactions.
 //
 // Disabed by default.
-func WithTransaction(transaction bool) Option {
-	return func(conf *config) {
+func WithTransaction(transaction bool) ExecuteOption {
+	return func(conf *executeConfig) {
 		conf.Transaction = transaction
-	}
-}
-
-// WithConsistency sets the `level` query parameter if set, otherwise it is not
-// set (so rqlite will default to weak consistency.
-// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/CONSISTENCY.md.
-func WithConsistency(consistency string) Option {
-	return func(conf *config) {
-		conf.Consistency = consistency
-	}
-}
-
-func withTransport(transport http.RoundTripper) Option {
-	return func(conf *config) {
-		conf.transport = transport
-	}
-}
-
-func withClock(clock clock) Option {
-	return func(conf *config) {
-		conf.clock = clock
 	}
 }

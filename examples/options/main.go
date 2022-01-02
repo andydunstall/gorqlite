@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/dunstall/gorqlite"
 	"github.com/dunstall/gorqlite/cluster"
 	log "github.com/sirupsen/logrus"
@@ -15,10 +13,10 @@ func main() {
 	}
 	defer cluster.Close()
 
-	// Open a connection with custom HTTP headers that apply to all requests.
-	conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithHTTPHeaders(http.Header{
-		"X-MYHEADER": []string{"my-value"},
-	}))
+	conn := gorqlite.Connect(
+		cluster.Addrs(),
+		gorqlite.WithActiveHostRoundRobin(false),
+	)
 
 	execResult, err := conn.ExecuteOne(
 		"CREATE TABLE foo (id integer not null primary key, name text)",

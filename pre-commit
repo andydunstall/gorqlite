@@ -18,6 +18,7 @@ run_build() {
 
 run_unit_tests() {
   make test
+  go test ./tests -tags system -c 
 }
 
 run_update() {
