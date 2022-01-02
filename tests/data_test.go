@@ -131,17 +131,19 @@ func TestDataAPIClient_ExecuteThenQueryResults(t *testing.T) {
 		}, result)
 	}
 
-	// TODO
 	queryResult, err = conn.QueryOne(
 		`SELECT * FROM foo WHERE name like("justin-%")`,
 	)
 	require.Nil(err)
-	for {
+	for i := 0; i < numRows; i++ {
 		row, ok := queryResult.Next()
-		if !ok {
-			break
-		}
-		fmt.Println(row)
+		require.True(ok)
+
+		var id int
+		var name string
+		require.Nil(row.Scan(&id, &name))
+		require.Equal(i+1, id)
+		require.Equal(fmt.Sprintf("justin-%d", i), name)
 	}
 
 	// Drop the table.

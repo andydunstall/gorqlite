@@ -5,7 +5,7 @@
 ### APIs
 - [ ] Add `/nodes` and `/ready` APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/DIAGNOSTICS.md)
 - [ ] Add backup APIs (see https://github.com/rqlite/rqlite/blob/master/DOC/BACKUPS.md)
-- [ ] Review rqlite/rqlite-js, rqlite/gorqlite and rqlite/pyrqlite SDKs for missing tests, invalid handling of requests/responses, etc
+- [ ] Review https://pkg.go.dev/database/sql, rqlite/rqlite-js, rqlite/gorqlite and rqlite/pyrqlite SDKs for missing tests, invalid handling of requests/responses, etc
 - [ ] Add better result types (such as `QueryResult.Get("name")`). See `rqlite/gorqlite:QueryResult`.
   * Replace ExecuteResponse with []ExecuteResult and return error if ExecuteResponse.Error != ""
   * Replace QueryResponse with []QueryRows and return error if QueryResponse.Error != ""
