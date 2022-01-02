@@ -9,6 +9,9 @@ provide a Go interface for the RQLite API endpoints.
 ## In Progress
 See `TODO.md`.
 
+## Usage
+See [documentation](https://pkg.go.dev/github.com/dunstall/gorqlite) for usage.
+
 ## Examples
 ### Connect
 Connects to an rqlite cluster and creates a table.
