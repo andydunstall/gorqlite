@@ -205,6 +205,110 @@ const (
   `
 )
 
+var (
+	nodeAddrs = []string{"node-1:8423", "node-2:2841", "node-3"}
+)
+
+func Example() {
+	addrs := []string{"node-1:8423", "node-2:2841", "node-3"}
+	conn := gorqlite.Open(addrs)
+
+	// Create a table with a single statement.
+	execResult, err := conn.ExecuteOne(
+		"CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
+	)
+	if err != nil {
+		panic(err)
+	}
+	if execResult.Error != "" {
+		panic(execResult.Error)
+	}
+
+	// Insert multiple entries in one call.
+	execResults, err := conn.Execute([]string{
+		`INSERT INTO foo(name, age) VALUES(\"fiona\", 20)`,
+		`INSERT INTO foo(name, age) VALUES(\"sinead\", 24)`,
+	})
+	if err != nil {
+		panic(err)
+	}
+	if execResults.HasError() {
+		panic(execResults.GetFirstError())
+	}
+	for _, r := range execResults {
+		fmt.Println("id of the inserted row:", r.LastInsertId)
+		fmt.Println("rows affected:", r.RowsAffected)
+	}
+
+	// Query the results.
+	queryResult, err := conn.QueryOne("SELECT * FROM foo")
+	if err != nil {
+		panic(err)
+	}
+	if queryResult.Error != "" {
+		panic(queryResult.Error)
+	}
+
+	// Scan the results into variables.
+	for {
+		row, ok := queryResult.Next()
+		if !ok {
+			break
+		}
+
+		var id int
+		var name string
+		if err = row.Scan(&id, &name); err != nil {
+			panic(err)
+		}
+		fmt.Println("ID:", id, "Name:", name)
+	}
+}
+
+// Demonstrates querying the database with strong consistency configured.
+func ExampleGorqlite_Query() {
+	conn := gorqlite.Open(nodeAddrs)
+
+	// Query the table with strong consistency.
+	queryResult, err := conn.QueryOne(
+		"SELECT * FROM foo",
+		gorqlite.WithConsistency("strong"),
+	)
+	if err != nil {
+		panic(err)
+	}
+	if queryResult.Error != "" {
+		panic(queryResult.Error)
+	}
+}
+
+//  Demonstrates executing statements within a transaction.
+func ExampleGorqlite_Execute() {
+	conn := gorqlite.Open(nodeAddrs)
+
+	// Execute the statements within a transaction.
+	execResults, err := conn.Execute([]string{
+		`INSERT INTO foo(name) VALUES("fiona")`,
+		`INSERT INTO foo(name) VALUES("sinead")`,
+	}, gorqlite.WithTransaction(true))
+	if err != nil {
+		panic(err)
+	}
+	if execResults.HasError() {
+		panic(execResults.GetFirstError())
+	}
+}
+
+func ExampleGorqlite_Status() {
+	conn := gorqlite.Open(nodeAddrs)
+
+	status, err := conn.Status()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("leader", status.Store.Leader.Addr)
+}
+
 func TestGorqlite_QueryOK(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -239,7 +343,7 @@ func TestGorqlite_QueryOK(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
@@ -311,7 +415,7 @@ func TestGorqlite_QueryOneOK(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.QueryOne("SELECT * FROM mytable")
 	require.Nil(t, err)
 
@@ -383,7 +487,7 @@ func TestGorqlite_QueryWithConsistency(t *testing.T) {
 		gomock.Any(), "/db/query", query, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.QueryOne(
 		"SELECT * FROM mytable",
 		gorqlite.WithConsistency("strong"),
@@ -462,7 +566,7 @@ func TestGorqlite_QueryNullResults(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT * FROM mytable"]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.Query([]string{"SELECT * FROM mytable"})
 	require.Nil(t, err)
 
@@ -512,7 +616,7 @@ func TestGorqlite_QueryErrorResults(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["invalid"]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.Query([]string{"invalid"})
 	require.Nil(t, err)
 
@@ -536,7 +640,7 @@ func TestGorqlite_QueryBadStatus(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT ...","SELECT ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Query([]string{"SELECT ...", "SELECT ..."})
 	require.Error(t, err)
 }
@@ -550,7 +654,7 @@ func TestGorqlite_QueryNetworkError(t *testing.T) {
 		gomock.Any(), "/db/query", url.Values{}, []byte(`["SELECT ...","SELECT ..."]`),
 	).Return(nil, fmt.Errorf("network err"))
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Query([]string{"SELECT ...", "SELECT ..."})
 	require.Error(t, err)
 }
@@ -577,7 +681,7 @@ func TestGorqlite_ExecuteOK(t *testing.T) {
 		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Nil(t, err)
 
@@ -612,7 +716,7 @@ func TestGorqlite_ExecuteOneOK(t *testing.T) {
 		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE TABLE ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.ExecuteOne("CREATE TABLE ...")
 	require.Nil(t, err)
 
@@ -643,7 +747,7 @@ func TestGorqlite_ExecuteWithTransaction(t *testing.T) {
 		gomock.Any(), "/db/execute", query, []byte(`["INSERT ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.ExecuteOne("INSERT ...", gorqlite.WithTransaction(true))
 	require.Nil(t, err)
 
@@ -675,7 +779,7 @@ func TestGorqlite_ExecuteErrorResults(t *testing.T) {
 		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	result, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Nil(t, err)
 
@@ -702,7 +806,7 @@ func TestGorqlite_ExecuteBadStatus(t *testing.T) {
 		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Error(t, err)
 }
@@ -716,7 +820,7 @@ func TestGorqlite_ExecuteNetworkError(t *testing.T) {
 		gomock.Any(), "/db/execute", url.Values{}, []byte(`["CREATE ...","INSERT ..."]`),
 	).Return(nil, fmt.Errorf("network err"))
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Execute([]string{"CREATE ...", "INSERT ..."})
 	require.Error(t, err)
 }
@@ -799,7 +903,7 @@ func TestGorqlite_StatusOK(t *testing.T) {
 		},
 	}
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	status, err := conn.Status()
 	require.Nil(t, err)
 	require.Equal(t, expected, status)
@@ -815,7 +919,7 @@ func TestGorqlite_StatusBadStatus(t *testing.T) {
 		gomock.Any(), "/status", url.Values{},
 	).Return(resp, nil)
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Status()
 	require.Error(t, err)
 }
@@ -829,7 +933,7 @@ func TestGorqlite_StatusNetworkError(t *testing.T) {
 		gomock.Any(), "/status", url.Values{},
 	).Return(nil, fmt.Errorf("network err"))
 
-	conn := gorqlite.ConnectWithClient(apiClient)
+	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Status()
 	require.Error(t, err)
 }

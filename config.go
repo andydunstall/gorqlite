@@ -41,8 +41,8 @@ func defaultQueryConfig() *queryConfig {
 
 type QueryOption func(conf *queryConfig)
 
-// WithConsistency sets the `level` query parameter if set, otherwise it is not
-// set (so rqlite will default to weak consistency.
+// WithConsistency sets the level query parameter if set, otherwise it is not
+// set (so rqlite will default to weak consistency).
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/CONSISTENCY.md.
 func WithConsistency(consistency string) QueryOption {
 	return func(conf *queryConfig) {
@@ -62,7 +62,7 @@ func defaultExecuteConfig() *executeConfig {
 
 type ExecuteOption func(conf *executeConfig)
 
-// WithTransaction sets the `transaction` query parameter when enabled.
+// WithTransaction sets the transaction query parameter when enabled.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#transactions.
 //
 // Disabed by default.

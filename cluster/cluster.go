@@ -118,7 +118,7 @@ func (c *Cluster) isHealthy() bool {
 			"node_addr": addr,
 		})
 
-		conn := gorqlite.Connect([]string{addr})
+		conn := gorqlite.Open([]string{addr})
 		status, err := conn.Status()
 		if err != nil {
 			lg.Debugf("failed to get status: %s", err)

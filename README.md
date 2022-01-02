@@ -11,85 +11,71 @@ See `TODO.md`.
 
 ## Examples
 ### Connect
-Connects to an rqlite cluster and creates a table. See `examples/create_table`.
+Connects to an rqlite cluster and creates a table.
 ```go
-conn := gorqlite.Connect(cluster.Addrs())
+addrs := []string{"node-1:8423", "node-2:2841", "node-3"}
+conn := gorqlite.Open(addrs)
 
+// Create a table with a single statement.
 execResult, err := conn.ExecuteOne(
-  "CREATE TABLE foo (id integer not null primary key, name text)",
+  "CREATE TABLE foo (id INTEGER NOT NULL PRIMARY KEY, name TEXT, age INTEGER)",
 )
 if err != nil {
-  log.Fatal(err)
+  panic(err)
 }
 if execResult.Error != "" {
-  log.Fatal(execResult.Error)
+  panic(execResult.Error)
 }
 ```
 
 ### Execute Then Query
-Inserts a row then selects the row. See `examples/query`.
+Inserts a row then selects the row.
 ```go
+// Insert multiple entries in one call.
 execResults, err := conn.Execute([]string{
-  "CREATE TABLE foo (id integer not null primary key, name text)",
-  `INSERT INTO foo(name) VALUES("fiona")`,
+  `INSERT INTO foo(name, age) VALUES(\"fiona\", 20)`,
+  `INSERT INTO foo(name, age) VALUES(\"sinead\", 24)`,
 })
 if err != nil {
-  log.Fatal(err)
+  panic(err)
 }
 if execResults.HasError() {
-  log.Fatal(execResults.GetFirstError())
+  panic(execResults.GetFirstError())
 }
-id := execResults[1].LastInsertId
-log.Infof("id of the inserted row: %d", id)
+for _, r := range execResults {
+  fmt.Println("id of the inserted row:", r.LastInsertId)
+  fmt.Println("rows affected:", r.RowsAffected)
+}
 
-queryResult, err := conn.QueryOne(
-  fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-)
+// Query the results.
+queryResult, err := conn.QueryOne("SELECT * FROM foo")
 if err != nil {
-  log.Fatal(err)
+  panic(err)
 }
 if queryResult.Error != "" {
-  log.Fatal(queryResult.Error)
+  panic(queryResult.Error)
 }
-row, _ := queryResult.Next()
-var name string
-if err = row.Scan(&name); err != nil {
-  log.Fatal(err)
-}
-log.Info("name:", name)
 
-execResult, err := conn.ExecuteOne(
-  `UPDATE foo SET name="justin" WHERE name="fiona"`,
-)
-if err != nil {
-  log.Fatal(err)
-}
-if execResult.Error != "" {
-  log.Fatal(execResult.Error)
-}
-rowsAffected := execResult.RowsAffected
-log.Infof("rows affected: %d", rowsAffected)
+// Scan the results into variables.
+for {
+  row, ok := queryResult.Next()
+  if !ok {
+    break
+  }
 
-queryResult, err = conn.QueryOne(
-  fmt.Sprintf(`SELECT name FROM foo WHERE id="%d"`, id),
-)
-if err != nil {
-  log.Fatal(err)
+  var id int
+  var name string
+  if err = row.Scan(&id, &name); err != nil {
+    panic(err)
+  }
+  fmt.Println("ID:", id, "Name:", name)
 }
-if queryResult.Error != "" {
-  log.Fatal(queryResult.Error)
-}
-row, _ = queryResult.Next()
-if err = row.Scan(&name); err != nil {
-  log.Fatal(err)
-}
-log.Info("name:", name)
 ```
 
 ### Custom Options
-Add default and method override options. See `examples/options`.
+Add default and method override options.
 ```go
-conn := gorqlite.Connect(cluster.Addrs(), gorqlite.WithActiveHostRoundRobin(false))
+conn := gorqlite.Open(cluster.Addrs(), gorqlite.WithActiveHostRoundRobin(false))
 
 execResult, err := conn.ExecuteOne(
   "CREATE TABLE foo (id integer not null primary key, name text)",
@@ -101,7 +87,7 @@ if execResult.Error != "" {
   log.Fatal(execResult.Error)
 }
 
-// Insert as a transaction.
+// Execute the statements within a transaction.
 execResults, err := conn.Execute([]string{
   `INSERT INTO foo(name) VALUES("foo")`,
   `INSERT INTO foo(name) VALUES("bar")`,
@@ -113,7 +99,7 @@ if execResults.HasError() {
   log.Fatal(execResults.GetFirstError())
 }
 
-// Query with strong consistency.
+// Query the table with strong consistency.
 sql := []string{
   `SELECT * FROM foo WHERE id="1"`,
   `SELECT * FROM foo WHERE name="bar"`,

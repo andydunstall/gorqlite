@@ -154,7 +154,7 @@ func (n *Node) WaitForAllFSM(ctx context.Context) (int, error) {
 }
 
 func (n *Node) Status(ctx context.Context) (gorqlite.Status, error) {
-	conn := gorqlite.Connect([]string{n.APIAdvAddr()})
+	conn := gorqlite.Open([]string{n.APIAdvAddr()})
 	status, err := conn.StatusWithContext(ctx)
 	if err != nil {
 		return status, wrapError(err, "failed to get status")
@@ -183,7 +183,7 @@ func (n *Node) Close() error {
 }
 
 func (n *Node) leader(ctx context.Context) (string, error) {
-	conn := gorqlite.Connect([]string{n.APIAdvAddr()})
+	conn := gorqlite.Open([]string{n.APIAdvAddr()})
 	status, err := conn.StatusWithContext(ctx)
 	if err != nil {
 		return "", wrapError(err, "failed to get leader")

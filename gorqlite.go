@@ -12,13 +12,14 @@ type Gorqlite struct {
 	apiClient APIClient
 }
 
-// Connect opens a connection to rqlite.
+// Open opens the gorqlite client. This will not attempt to connect to the
+// database.
 //
 // hosts is a list of addresses (in format host[:port]) for the known
 // nodes in the cluster.
 //
 // opts is a list of opts to apply to every request.
-func Connect(hosts []string, opts ...Option) *Gorqlite {
+func Open(hosts []string, opts ...Option) *Gorqlite {
 	conf := defaultConfig()
 	for _, opt := range opts {
 		opt(conf)
@@ -32,8 +33,8 @@ func Connect(hosts []string, opts ...Option) *Gorqlite {
 	}
 }
 
-// ConnectWithClient opens a connection to rqlite using a custom API client.
-func ConnectWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
+// OpenWithClient opens a connection to rqlite using a custom API client.
+func OpenWithClient(apiClient APIClient, opts ...Option) *Gorqlite {
 	return &Gorqlite{
 		apiClient,
 	}
@@ -44,9 +45,12 @@ type queryResponse struct {
 	Error   string        `json:"error,omitempty"`
 }
 
-// Query runs the given query `sql` statements to rqlite and returns the
-// results.
+// Query runs the given sql statements and returns the query result.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#querying-data.
+//
+// To execute the statements with a custom consistency level use
+// WithConsistency(level).
+// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/CONSISTENCY.md.
 func (g *Gorqlite) Query(sql []string, opts ...QueryOption) (QueryResults, error) {
 	return g.QueryWithContext(context.Background(), sql, opts...)
 }
@@ -107,11 +111,11 @@ type executeResponse struct {
 	Error   string          `json:"error,omitempty"`
 }
 
-// Execute writes the given `sql` statements to rqlite and returns the execute
-// response.
+// Execute writes the sql statements to rqlite and returns the execute results.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#writing-data.
 //
-// To enable transactions use `WithTransaction(true)` option.
+// To execute the statements within a transaction use WithTransaction(true)
+// option.
 // See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DATA_API.md#transactions.
 func (g *Gorqlite) Execute(sql []string, opts ...ExecuteOption) (ExecuteResults, error) {
 	return g.ExecuteWithContext(context.Background(), sql, opts...)
