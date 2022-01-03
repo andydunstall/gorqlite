@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	// statusV6_7_0 is a capture of the status API taken from a node ran with
+	// statusV6_7_0JSON is a capture of the status API taken from a node ran with
 	// `tests/cluster` running rqlite v6.7.0.
-	statusV6_7_0 = `
+	statusV6_7_0JSON = `
 {
     "build": {
         "branch": "master",
@@ -202,7 +202,64 @@ const (
         "trailing_logs": 10240
     }
 }
-  `
+`
+
+	// nodesV6_7_0JSON is a capture of the nodes API taken from a node ran with
+	// `tests/cluster` running rqlite v6.7.0.
+	nodesV6_7_0JSON = `
+{
+    "1": {
+        "addr": "127.0.0.1:38275",
+        "api_addr": "http://127.0.0.1:45865",
+        "leader": true,
+        "reachable": true,
+        "time": 0.001117469
+    },
+    "2": {
+        "addr": "127.0.0.1:43599",
+        "api_addr": "http://127.0.0.1:43287",
+        "leader": false,
+        "reachable": true,
+        "time": 0.001269173
+    },
+    "3": {
+        "addr": "127.0.0.1:46787",
+        "api_addr": "http://127.0.0.1:42953",
+        "leader": false,
+        "reachable": true,
+        "time": 1.4039e-05
+    }
+}
+`
+)
+
+var (
+	nodesV6_7_0 = gorqlite.Nodes{
+		"1": {
+			APIAddr:   "http://127.0.0.1:45865",
+			Addr:      "127.0.0.1:38275",
+			Reachable: true,
+			Leader:    true,
+			Time:      0.001117469,
+			Error:     "",
+		},
+		"2": {
+			APIAddr:   "http://127.0.0.1:43287",
+			Addr:      "127.0.0.1:43599",
+			Reachable: true,
+			Leader:    false,
+			Time:      0.001269173,
+			Error:     "",
+		},
+		"3": {
+			APIAddr:   "http://127.0.0.1:42953",
+			Addr:      "127.0.0.1:46787",
+			Reachable: true,
+			Leader:    false,
+			Time:      1.4039e-05,
+			Error:     "",
+		},
+	}
 )
 
 var (
@@ -829,7 +886,7 @@ func TestGorqlite_StatusOK(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	resp := httpResponse(http.StatusOK, strings.NewReader(statusV6_7_0))
+	resp := httpResponse(http.StatusOK, strings.NewReader(statusV6_7_0JSON))
 	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
 	apiClient.EXPECT().GetWithContext(gomock.Any(), "/status", url.Values{}).Return(resp, nil)
 
@@ -935,6 +992,65 @@ func TestGorqlite_StatusNetworkError(t *testing.T) {
 
 	conn := gorqlite.OpenWithClient(apiClient)
 	_, err := conn.Status()
+	require.Error(t, err)
+}
+
+func TestGorqlite_NodesOK(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	resp := httpResponse(http.StatusOK, strings.NewReader(nodesV6_7_0JSON))
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	apiClient.EXPECT().GetWithContext(gomock.Any(), "/nodes", url.Values{}).Return(resp, nil)
+
+	conn := gorqlite.OpenWithClient(apiClient)
+	nodes, err := conn.Nodes()
+	require.Nil(t, err)
+	require.Equal(t, nodesV6_7_0, nodes)
+}
+
+func TestGorqlite_NodesWithNonVoters(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	resp := httpResponse(http.StatusOK, strings.NewReader(nodesV6_7_0JSON))
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	query := url.Values{}
+	query.Add("nonvoters", "")
+	apiClient.EXPECT().GetWithContext(gomock.Any(), "/nodes", query).Return(resp, nil)
+
+	conn := gorqlite.OpenWithClient(apiClient)
+	nodes, err := conn.Nodes(gorqlite.WithNonVoters(true))
+	require.Nil(t, err)
+	require.Equal(t, nodesV6_7_0, nodes)
+}
+
+func TestGorqlite_NodesBadStatus(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	resp := httpResponse(http.StatusBadRequest, strings.NewReader(""))
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	apiClient.EXPECT().GetWithContext(
+		gomock.Any(), "/nodes", url.Values{},
+	).Return(resp, nil)
+
+	conn := gorqlite.OpenWithClient(apiClient)
+	_, err := conn.Nodes()
+	require.Error(t, err)
+}
+
+func TestGorqlite_NodesNetworkError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	apiClient := mock_gorqlite.NewMockAPIClient(ctrl)
+	apiClient.EXPECT().GetWithContext(
+		gomock.Any(), "/nodes", url.Values{},
+	).Return(nil, fmt.Errorf("network err"))
+
+	conn := gorqlite.OpenWithClient(apiClient)
+	_, err := conn.Nodes()
 	require.Error(t, err)
 }
 

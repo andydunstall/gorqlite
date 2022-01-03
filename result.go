@@ -158,6 +158,15 @@ func (r ExecuteResults) HasError() bool {
 	return r.GetFirstError() != ""
 }
 
+type Nodes map[string]struct {
+	APIAddr   string  `json:"api_addr,omitempty"`
+	Addr      string  `json:"addr,omitempty"`
+	Reachable bool    `json:"reachable"`
+	Leader    bool    `json:"leader"`
+	Time      float64 `json:"time,omitempty"`
+	Error     string  `json:"error,omitempty"`
+}
+
 func toTime(src interface{}) (time.Time, error) {
 	switch src := src.(type) {
 	case int64:

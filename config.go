@@ -71,3 +71,25 @@ func WithTransaction(transaction bool) ExecuteOption {
 		conf.Transaction = transaction
 	}
 }
+
+type nodesConfig struct {
+	NonVoters bool
+}
+
+func defaultNodesConfig() *nodesConfig {
+	return &nodesConfig{
+		NonVoters: false,
+	}
+}
+
+type NodesOption func(conf *nodesConfig)
+
+// WithTransaction sets the nonvoters query parameter when enabled.
+// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DIAGNOSTICS.md#nodes-api.
+//
+// Disabed by default.
+func WithNonVoters(nonVoters bool) NodesOption {
+	return func(conf *nodesConfig) {
+		conf.NonVoters = nonVoters
+	}
+}

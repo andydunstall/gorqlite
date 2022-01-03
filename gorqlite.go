@@ -195,3 +195,38 @@ func (g *Gorqlite) StatusWithContext(ctx context.Context) (Status, error) {
 	}
 	return status, nil
 }
+
+// Nodes queries the rqlite nodes API.
+// See https://github.com/rqlite/rqlite/blob/cc74ab0af7c128582b7f0fd380033d43e642a121/DOC/DIAGNOSTICS.md#nodes-api.
+func (g *Gorqlite) Nodes(opts ...NodesOption) (Nodes, error) {
+	return g.NodesWithContext(context.Background(), opts...)
+}
+
+func (g *Gorqlite) NodesWithContext(ctx context.Context, opts ...NodesOption) (Nodes, error) {
+	conf := defaultNodesConfig()
+	for _, opt := range opts {
+		opt(conf)
+	}
+
+	query := url.Values{}
+	if conf.NonVoters {
+		query.Add("nonvoters", "")
+	}
+
+	resp, err := g.apiClient.GetWithContext(ctx, "/nodes", query)
+	if err != nil {
+		return nil, wrapError(err, "nodes failed: request failed")
+	}
+	defer resp.Body.Close()
+
+	if !isStatusOK(resp.StatusCode) {
+		return nil, newError("nodes failed: invalid status code: %d", resp.StatusCode)
+	}
+
+	var nodes Nodes
+	if err := json.NewDecoder(resp.Body).Decode(&nodes); err != nil {
+		return nil, wrapError(err, "nodes failed: invalid response")
+	}
+
+	return nodes, nil
+}
